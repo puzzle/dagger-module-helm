@@ -11,10 +11,10 @@ type Helm struct {
 }
 
 type PushOpts struct {
-	Registry   string
-	Repository string
-	Oci        bool
-	Username   string
+	Registry   string `yaml:"registry"`
+	Repository string `yaml:"repository"`
+	Oci        bool   `yaml:"oci"`
+	Username   string `yaml:"username"`
 	Password   string
 }
 
@@ -42,7 +42,7 @@ func (h *Helm) Version(ctx context.Context, d *Directory) (string, error) {
 	return strings.TrimSpace(version), nil
 }
 
-func (h *Helm) PackagePush(ctx context.Context, d *Directory, registry string, repository string, username string, password string) error {
+func (h *Helm) PackagePush(ctx context.Context, d *Directory, registry string, repository string, username string, password string) (bool, error) {
 
 	opts := PushOpts{
 		Registry:   registry,
@@ -56,37 +56,37 @@ func (h *Helm) PackagePush(ctx context.Context, d *Directory, registry string, r
 	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", d).WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	version = strings.TrimSpace(version)
 
 	name, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.name' -"}).Stdout(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	name = strings.TrimSpace(name)
 
 	c, err = c.WithExec([]string{"helm", "registry", "login", opts.Registry, "-u", opts.Username, "-p", opts.Password}).Sync(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	//TODO: Refactor with return
 	c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	exc, err := c.File("/ec").Contents(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if exc == "0" {
 		//Chart exists
-		return nil
+		return false, nil
 	}
 
 	_, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
@@ -95,8 +95,8 @@ func (h *Helm) PackagePush(ctx context.Context, d *Directory, registry string, r
 		WithExec([]string{"helm", "push", fmt.Sprintf("%s-%s.tgz", name, version), opts.getRepoFqdn()}).
 		Sync(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return true, nil
 }
