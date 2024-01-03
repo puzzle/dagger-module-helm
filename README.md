@@ -1,6 +1,6 @@
 # daggerverse Helm Module
 
-[Dagger](https://dagger.io/) module for [daggerverse](https://daggerverse.dev/) providing [Helm](https://helm.sh/)
+[Dagger](https://dagger.io/) module for [daggerverse](https://daggerverse.dev/) providing [Helm](https://helm.sh/) functionality.
 
 The Dagger module is located in the [helm](./helm/) directory.
 
@@ -26,10 +26,10 @@ The helm module is referenced locally.
 
 ### version
 
-Get and display the version of the Helm Chart located at the directory given by the `--d` flag.
+Get and display the version of the Helm Chart located at the directory given by the `--directory` flag.
 
 ```bash
-dagger call -m ./helm/ version --d mychart/
+dagger call -m ./helm/ version --directory mychart/
 ```
 
 ## development

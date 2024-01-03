@@ -32,8 +32,8 @@ func (p PushOpts) getRepoFqdn() string {
 	return fmt.Sprintf("%s/%s", p.Registry, p.Repository)
 }
 
-func (h *Helm) Version(ctx context.Context, d *Directory) (string, error) {
-	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", d).WithWorkdir("/helm")
+func (h *Helm) Version(ctx context.Context, directory *Directory) (string, error) {
+	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", directory).WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return "", err
@@ -42,7 +42,7 @@ func (h *Helm) Version(ctx context.Context, d *Directory) (string, error) {
 	return strings.TrimSpace(version), nil
 }
 
-func (h *Helm) PackagePush(ctx context.Context, d *Directory, registry string, repository string, username string, password string) (bool, error) {
+func (h *Helm) PackagePush(ctx context.Context, directory *Directory, registry string, repository string, username string, password string) (bool, error) {
 
 	opts := PushOpts{
 		Registry:   registry,
@@ -53,7 +53,7 @@ func (h *Helm) PackagePush(ctx context.Context, d *Directory, registry string, r
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
-	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", d).WithWorkdir("/helm")
+	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", directory).WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return false, err
