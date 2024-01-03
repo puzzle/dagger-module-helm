@@ -16,10 +16,18 @@ Run all commands from the [helm](./helm/) directory. The [Dagger CLI](https://do
 
 ### functions
 
-List all functions of the module.
+List all functions of the module. This command is provided by the [Dagger CLI](https://docs.dagger.io/cli). 
 
 ```bash
 dagger functions
+```
+
+### version
+
+Get and display the version of the Helm Chart located at the directory given by the `--d` flag.
+
+```bash
+dagger call version --d mychart/
 ```
 
 ## development
