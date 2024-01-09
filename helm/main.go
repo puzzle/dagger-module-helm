@@ -32,6 +32,7 @@ func (p PushOpts) getRepoFqdn() string {
 	return fmt.Sprintf("%s/%s", p.Registry, p.Repository)
 }
 
+// Read version from Helm Chart
 func (h *Helm) Version(ctx context.Context, directory *Directory) (string, error) {
 	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", directory).WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
@@ -42,6 +43,7 @@ func (h *Helm) Version(ctx context.Context, directory *Directory) (string, error
 	return strings.TrimSpace(version), nil
 }
 
+// Package and push an Helm Chart into a registry
 func (h *Helm) PackagePush(ctx context.Context, directory *Directory, registry string, repository string, username string, password string) (bool, error) {
 
 	opts := PushOpts{
@@ -99,4 +101,15 @@ func (h *Helm) PackagePush(ctx context.Context, directory *Directory, registry s
 	}
 
 	return true, nil
+}
+
+// Run helm unit test in a given directory
+func (h *Helm) Test(ctx context.Context, directory *Directory, args []string) (string, error) {
+	c := dag.Container().From("helmunittest/helm-unittest").WithDirectory("/helm", directory).WithWorkdir("/helm")
+	version, err := c.WithExec(args).Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(version), nil
 }
