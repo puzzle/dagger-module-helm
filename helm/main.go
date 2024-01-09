@@ -44,6 +44,9 @@ func (h *Helm) Version(ctx context.Context, directory *Directory) (string, error
 }
 
 // Package and push an Helm Chart into a registry
+// return true && nil, chart was pushed successfully
+// return false && nil, chart was not pushed. The specified version already exists
+// return true/false && error, an error occurred
 func (h *Helm) PackagePush(ctx context.Context, directory *Directory, registry string, repository string, username string, password string) (bool, error) {
 
 	opts := PushOpts{
