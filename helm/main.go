@@ -109,10 +109,10 @@ func (h *Helm) PackagePush(ctx context.Context, directory *Directory, registry s
 // Run helm unit test in a given directory
 func (h *Helm) Test(ctx context.Context, directory *Directory, args []string) (string, error) {
 	c := dag.Container().From("helmunittest/helm-unittest").WithDirectory("/helm", directory).WithWorkdir("/helm")
-	version, err := c.WithExec(args).Stdout(ctx)
+	out, err := c.WithExec(args).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(version), nil
+	return out, nil
 }
