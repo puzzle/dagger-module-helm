@@ -107,7 +107,16 @@ func (h *Helm) PackagePush(ctx context.Context, directory *Directory, registry s
 }
 
 // Run helm unit test in a given directory
-func (h *Helm) Test(ctx context.Context, directory *Directory, args []string) (string, error) {
+func (h *Helm) Test(
+	// method call context
+	ctx context.Context,
+
+	// local directory that contains the Helm Chart
+	directory *Directory,
+
+	// Helm Unittest arguments
+	args []string,
+) (string, error) {
 	c := dag.Container().From("helmunittest/helm-unittest").WithDirectory("/helm", directory).WithWorkdir("/helm")
 	out, err := c.WithExec(args).Stdout(ctx)
 	if err != nil {

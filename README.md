@@ -24,13 +24,7 @@ dagger functions -m ./helm/
 
 The helm module is referenced locally.
 
-### version
-
-Get and display the version of the Helm Chart located at the directory given by the `--directory` flag.
-
-```bash
-dagger call -m ./helm/ version --directory mychart/
-```
+See the module [readme](./helm/README.md) or the method comments for more details.
 
 ## development
 

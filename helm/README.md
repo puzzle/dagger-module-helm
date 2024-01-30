@@ -19,6 +19,18 @@ dagger call -m "github.com/puzzle/dagger-module-helm/helm" packagePush \
   --directory ./mychart/
 ```
 
+### test
+
+Run [Helm unittests](https://github.com/helm-unittest/helm-unittest) with the given directory and files.
+
+Usage
+
+```bash
+dagger call -m "github.com/puzzle/dagger-module-helm/helm" test --directory ./mychart/ --args "."
+```
+
+Provide the helm chart directory with pointing to it with the `--directory` flag. Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with the tests.
+
 ### version
 
 Get and display the version of the Helm Chart located at the directory given by the `--directory` flag.
