@@ -1,6 +1,4 @@
 // Provides [Helm](https://helm.sh/) functionality as [Dagger Module](https://daggerverse.dev/).
-//
-// Module Home: https://github.com/puzzle/dagger-module-helm
 
 package main
 
