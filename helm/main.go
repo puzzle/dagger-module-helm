@@ -1,4 +1,8 @@
-// Provides [Helm](https://helm.sh/) functionality as [Dagger Module](https://daggerverse.dev/).
+// Provides Helm functionality
+//
+// The main focus is to publish new Helm Chart versions on registries.
+//
+// For accomplishing this the https://helm.sh/ tool is used.
 
 package main
 
