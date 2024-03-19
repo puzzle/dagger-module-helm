@@ -58,19 +58,18 @@ func (h *Helm) Version(
 	return strings.TrimSpace(version), nil
 }
 
-// Package and push an Helm Chart into a registry
+// Packages and pushes a Helm chart to a specified OCI-compatible registry with authentication.
 //
-// return true && nil, chart was pushed successfully
-// return false && nil, chart was not pushed. The specified version already exists
-// return true/false && error, an error occurred
+// Returns true if the chart was successfully pushed, or false if the chart already exists, with error handling for push failures.
 //
 // Example usage:
-// dagger call package-push \
-//   --registry registry.puzzle.ch \
-//   --repository helm \
-//   --username REGISTRY_HELM_USER \
-//   --password REGISTRY_HELM_PASSWORD \
-//   --directory ./mychart/
+//
+//	dagger call package-push \
+//	  --registry registry.puzzle.ch \
+//	  --repository helm \
+//	  --username REGISTRY_HELM_USER \
+//	  --password REGISTRY_HELM_PASSWORD \
+//	  --directory ./mychart/
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
