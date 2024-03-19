@@ -46,7 +46,7 @@ func (h *Helm) Version(
 	ctx context.Context,
 	// directory that contains the Helm Chart
 	directory *Directory,
-	) (string, error) {
+) (string, error) {
 	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
@@ -141,7 +141,6 @@ func (h *Helm) PackagePush(
 
 	return true, nil
 }
-
 
 // Run [Helm unittests](https://github.com/helm-unittest/helm-unittest) with the given directory and files.
 //
