@@ -38,7 +38,7 @@ func (p PushOpts) getRepoFqdn() string {
 	return fmt.Sprintf("%s/%s", p.Registry, p.Repository)
 }
 
-// Get and display the version of the Helm Chart located at the directory given by the `--directory` flag.
+// Get and display the version of the Helm Chart located inside the given directory.
 //
 // Example usage: dagger call version --directory ./mychart/
 func (h *Helm) Version(
@@ -46,7 +46,7 @@ func (h *Helm) Version(
 	ctx context.Context,
 	// directory that contains the Helm Chart
 	directory *Directory,
-	) (string, error) {
+) (string, error) {
 	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
@@ -58,19 +58,18 @@ func (h *Helm) Version(
 	return strings.TrimSpace(version), nil
 }
 
-// Package and push an Helm Chart into a registry
+// Packages and pushes a Helm chart to a specified OCI-compatible registry with authentication.
 //
-// return true && nil, chart was pushed successfully
-// return false && nil, chart was not pushed. The specified version already exists
-// return true/false && error, an error occurred
+// Returns true if the chart was successfully pushed, or false if the chart already exists, with error handling for push failures.
 //
 // Example usage:
-// dagger call package-push \
-//   --registry registry.puzzle.ch \
-//   --repository helm \
-//   --username REGISTRY_HELM_USER \
-//   --password REGISTRY_HELM_PASSWORD \
-//   --directory ./mychart/
+//
+//	dagger call package-push \
+//	  --registry registry.puzzle.ch \
+//	  --repository helm \
+//	  --username REGISTRY_HELM_USER \
+//	  --password REGISTRY_HELM_PASSWORD \
+//	  --directory ./mychart/
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
@@ -142,8 +141,7 @@ func (h *Helm) PackagePush(
 	return true, nil
 }
 
-
-// Run [Helm unittests](https://github.com/helm-unittest/helm-unittest) with the given directory and files.
+// Run Helm unittests with the given directory and files.
 //
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
 // Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with the tests.
