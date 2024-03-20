@@ -38,7 +38,7 @@ func (p PushOpts) getRepoFqdn() string {
 	return fmt.Sprintf("%s/%s", p.Registry, p.Repository)
 }
 
-// Get and display the version of the Helm Chart located at the directory given by the `--directory` flag.
+// Get and display the version of the Helm Chart located inside the given directory.
 //
 // Example usage: dagger call version --directory ./mychart/
 func (h *Helm) Version(
@@ -141,7 +141,7 @@ func (h *Helm) PackagePush(
 	return true, nil
 }
 
-// Run [Helm unittests](https://github.com/helm-unittest/helm-unittest) with the given directory and files.
+// Run Helm unittests with the given directory and files.
 //
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
 // Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with the tests.
