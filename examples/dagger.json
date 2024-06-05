@@ -1,6 +1,12 @@
 {
   "name": "examples",
   "sdk": "go",
+  "dependencies": [
+    {
+      "name": "helm",
+      "source": "../helm"
+    }
+  ],
   "source": "dagger",
   "engineVersion": "v0.11.6"
 }
