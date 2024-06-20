@@ -19,7 +19,3 @@ jobs:
         run: dagger functions -m helm/
       - name: Run module tests
         run: dagger -m examples/ call all
-      # For ephemeral runners only: overrides the default Docker stop timeout to give the Dagger engine more time to push cache data to Dagger Cloud
-      - name: Stop Engine
-        run: docker stop -t 300 $(docker ps --filter name="dagger-engine-*" -q)
-        if: always()
