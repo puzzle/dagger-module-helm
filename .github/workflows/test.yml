@@ -3,6 +3,10 @@ name: Dagger test
 on:
   push:
 
+env:
+  # The Dagger CLI uses the DAGGER_CLOUD_TOKEN environment variable to authenticate with Dagger Cloud
+  DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN}}
+
 jobs:
   build:
     name: build
@@ -11,12 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Dagger CLI
         run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
-      # The Dagger CLI uses the DAGGER_CLOUD_TOKEN environment variable to authenticate with Dagger Cloud
-      - name: Run Dagger pipeline
+      - name: Display module functions
         run: dagger functions -m helm/
-        env:
-          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN}}
-      # For ephemeral runners only: overrides the default Docker stop timeout to give the Dagger engine more time to push cache data to Dagger Cloud
-      - name: Stop Engine
-        run: docker stop -t 300 $(docker ps --filter name="dagger-engine-*" -q)
-        if: always()
+      - name: Run module tests
+        run: dagger -m examples/ call all
