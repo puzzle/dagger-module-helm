@@ -1,2 +1,4 @@
 dagger.gen.go
 helm/dagger/internal
+go.work
+go.work.sum

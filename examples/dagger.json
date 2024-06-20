@@ -7,6 +7,6 @@
       "source": "../helm"
     }
   ],
-  "source": "dagger",
+  "source": ".",
   "engineVersion": "v0.11.6"
 }
