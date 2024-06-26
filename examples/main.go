@@ -14,6 +14,7 @@ func (m *Examples) All(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.Version)
+	p.Go(m.Test)
 
 	return p.Wait()
 }
@@ -24,7 +25,7 @@ func (m *Examples) Version(
 ) error {
 	const expected = "0.1.1"
 
-	// dagger call version --directory ./mychart/
+	// dagger call version --directory ./examples/testdata/mychart/
 	directory := dag.CurrentModule().Source().Directory("testdata/mychart/")
 	version, err := dag.Helm().Version(ctx, directory)
 
@@ -34,6 +35,24 @@ func (m *Examples) Version(
 
 	if version != expected {
 		return fmt.Errorf("expected %q, got %q", expected, version)
+	}
+
+	return nil
+}
+
+
+func (m *Examples) Test(
+	// method call context
+	ctx context.Context,
+) error {
+	args := []string{"."}
+
+	// dagger call test --directory ./examples/testdata/mychart/ --args "."
+	directory := dag.CurrentModule().Source().Directory("testdata/mychart/")
+	_, err := dag.Helm().Test(ctx, directory, args)
+
+	if err != nil {
+		return err
 	}
 
 	return nil
