@@ -162,8 +162,12 @@ func (h *Helm) Test(
 	// Helm Unittest arguments
 	args []string,
 ) (string, error) {
-	c := dag.Container().From("helmunittest/helm-unittest").WithDirectory("/helm", directory).WithWorkdir("/helm")
-	out, err := c.WithExec(args).Stdout(ctx)
+	c := dag.Container().
+		From(REGISTRY).
+		WithDirectory("/helm", directory).
+		WithWorkdir("/helm").
+		WithoutEntrypoint()
+	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
