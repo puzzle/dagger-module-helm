@@ -164,7 +164,7 @@ func (h *Helm) Test(
 ) (string, error) {
 	c := dag.Container().
 		From(HELM_IMAGE).
-		WithDirectory("/helm", directory).
+		WithDirectory("/helm", directory, ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
