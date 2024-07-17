@@ -31,4 +31,4 @@ jobs:
               --registry ${TEST_HELM_REGISTRY_URL} \
               --repository ${TEST_HELM_REGISTRY_REPOSITORY} \
               --username ${TEST_HELM_REGISTRY_HELM_USER} \
-              --password ${TEST_HELM_REGISTRY_HELM_PASSWORD}
+              --password env:TEST_HELM_REGISTRY_HELM_PASSWORD
