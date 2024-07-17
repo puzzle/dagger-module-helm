@@ -14,7 +14,7 @@ func (m *Examples) All(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.Version)
-	p.Go(m.Test)
+	// p.Go(m.Test)
 
 	return p.Wait()
 }

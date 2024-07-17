@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"dagger/ci/internal/dagger"
+	"fmt"
 )
 
 type Ci struct{}
@@ -30,10 +31,45 @@ func (m *Ci) Build(
 		WithFile("/src/custom.Dockerfile", containerfile).
 		Directory("/src")
 
-	// build using Dockerfile and publish to registry
-	//ref, err := dag.Container().
+	// build using Dockerfile
 	return dag.Container().
 		Build(workspace, dagger.ContainerBuildOpts{
 			Dockerfile: "custom.Dockerfile",
-		}) // .Publish(ctx, "ttl.sh/hello-dagger")
+		})
+}
+
+func (m *Ci) Publish(
+	ctx context.Context,
+	// URL of the registry
+	registry string,
+	// name of the repository
+	repository string,
+	// tag of the image
+	// +optional
+	tag string,
+	// registry user name
+	username string,
+	// registry user password
+	password *dagger.Secret,
+) (string, error) {
+
+	container := m.Build(ctx)
+
+	imageTag := "latest"
+	if tag != "" {
+		imageTag = tag
+	}
+
+	reference := fmt.Sprintf("%s/%s:%s", registry, repository, imageTag)
+
+	// publish to registry
+	ref, err := container.
+		WithRegistryAuth(registry, username, password).
+		Publish(ctx, reference)
+
+	if err != nil {
+		return "", err
+	}
+
+	return ref, nil
 }

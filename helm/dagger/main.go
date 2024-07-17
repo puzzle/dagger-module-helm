@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+const REGISTRY string = "quay.io/puzzle/dagger-module-helm:latest"
+
 type Helm struct {
 }
 
@@ -47,9 +49,11 @@ func (h *Helm) Version(
 	// directory that contains the Helm Chart
 	directory *Directory,
 ) (string, error) {
-	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").
+	c := dag.Container().
+		From(REGISTRY).
 		WithDirectory("/helm", directory).
-		WithWorkdir("/helm")
+		WithWorkdir("/helm").
+		WithoutEntrypoint()
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return "", err
@@ -93,7 +97,10 @@ func (h *Helm) PackagePush(
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
-	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", directory).WithWorkdir("/helm")
+	c := dag.Container().
+		From("registry.puzzle.ch/cicd/alpine-base:latest").
+		WithDirectory("/helm", directory).
+		WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return false, err

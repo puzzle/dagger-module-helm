@@ -2,6 +2,7 @@ FROM registry.access.redhat.com/ubi9:9.4-1123.1719560047
 
 ARG HELM_PACKAGE=https://get.helm.sh/helm-v3.15.3-linux-amd64.tar.gz
 ARG HELM_UNITTEST_PACKAGE=https://github.com/helm-unittest/helm-unittest/releases/download/v0.5.1/helm-unittest-linux-amd64-0.5.1.tgz
+ARG YQ_PACKAGE=https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64.tar.gz
 
 # Environment variables
 ENV \
@@ -9,7 +10,7 @@ ENV \
 
 RUN  \
     # install Helm
-    curl ${HELM_PACKAGE} -o /tmp/helm.tar.gz && \
+    curl ${HELM_PACKAGE} -L -o /tmp/helm.tar.gz && \
     tar xvfz /tmp/helm.tar.gz -C /tmp && \
     cp -a /tmp/linux-amd64/helm  /usr/local/bin/helm && \
     rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 && \
@@ -19,6 +20,12 @@ RUN  \
     tar xvfz /tmp/helm-unittest.tgz -C /tmp/hut && \
     cp /tmp/hut/untt /usr/local/bin/helm-unittest && \
     rm -rf /tmp/helm-unittest.tar.gz /tmp/hut && \
+    # install yq
+    curl ${YQ_PACKAGE} -L -o /tmp/yq.tar.gz && \
+    mkdir -p /tmp/yq && \
+    tar xvfz /tmp/yq.tar.gz -C /tmp/yq && \
+    cp -a /tmp/yq/yq_linux_amd64 /usr/local/bin/yq && \
+    rm -rf /tmp/yq.tar.gz /tmp/yq && \
     # make all binaries executable
     chmod +x /usr/local/bin/*
 
