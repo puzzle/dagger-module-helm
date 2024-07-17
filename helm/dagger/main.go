@@ -72,9 +72,9 @@ func (h *Helm) Version(
 //	dagger call package-push \
 //	  --registry registry.puzzle.ch \
 //	  --repository helm \
-//	  --username REGISTRY_HELM_USER \
-//	  --password REGISTRY_HELM_PASSWORD \
-//	  --directory ./mychart/
+//	  --username $REGISTRY_HELM_USER \
+//	  --password env:REGISTRY_HELM_PASSWORD \
+//	  --directory ./examples/testdata/mychart/
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,

@@ -5,7 +5,7 @@ on:
 
 env:
   # The Dagger CLI uses the DAGGER_CLOUD_TOKEN environment variable to authenticate with Dagger Cloud
-  DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN}}
+  DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
 jobs:
   build:
@@ -19,3 +19,16 @@ jobs:
         run: dagger functions -m helm/
       - name: Run module tests
         run: dagger -m examples/ call all
+      - name: Run module integration tests
+        env:
+          TEST_HELM_REGISTRY_URL: ${{ secrets.TEST_HELM_REGISTRY_URL }}
+          TEST_HELM_REGISTRY_REPOSITORY: ${{ secrets.TEST_HELM_REGISTRY_REPOSITORY }}
+          TEST_HELM_REGISTRY_HELM_USER: ${{ secrets.TEST_HELM_REGISTRY_HELM_USER }}
+          TEST_HELM_REGISTRY_HELM_PASSWORD: ${{ secrets.TEST_HELM_REGISTRY_HELM_PASSWORD }}
+        run: >
+          dagger -m examples/
+            call package-push
+            --registry ${TEST_HELM_REGISTRY_URL}
+            --repository ${TEST_HELM_REGISTRY_REPOSITORY}
+            --username ${TEST_HELM_REGISTRY_HELM_USER}
+            --password ${TEST_HELM_REGISTRY_HELM_PASSWORD}
