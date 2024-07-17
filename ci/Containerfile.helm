@@ -1,0 +1,33 @@
+FROM registry.access.redhat.com/ubi9:9.4-1123.1719560047
+
+ARG HELM_PACKAGE=https://get.helm.sh/helm-v3.15.3-linux-amd64.tar.gz
+ARG HELM_UNITTEST_PACKAGE=https://github.com/helm-unittest/helm-unittest/releases/download/v0.5.1/helm-unittest-linux-amd64-0.5.1.tgz
+
+# Environment variables
+ENV \
+    HOME="/helm" 
+
+RUN  \
+    # install Helm
+    curl ${HELM_PACKAGE} -o /tmp/helm.tar.gz && \
+    tar xvfz /tmp/helm.tar.gz -C /tmp && \
+    cp -a /tmp/linux-amd64/helm  /usr/local/bin/helm && \
+    rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 && \
+    # Install Helm unittest plugin
+    mkdir -p /tmp/hut && \
+    curl ${HELM_UNITTEST_PACKAGE} -L -o /tmp/helm-unittest.tgz && \
+    tar xvfz /tmp/helm-unittest.tgz -C /tmp/hut && \
+    cp /tmp/hut/untt /usr/local/bin/helm-unittest && \
+    rm -rf /tmp/helm-unittest.tar.gz /tmp/hut && \
+    # make all binaries executable
+    chmod +x /usr/local/bin/*
+
+WORKDIR /helm
+
+RUN chown -R 1001:0 /helm && \
+    chmod -R g=u /helm
+
+USER 1001
+
+ENTRYPOINT ["/usr/local/bin/helm"]
+CMD ["--help"]
