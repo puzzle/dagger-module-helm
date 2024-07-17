@@ -12,8 +12,7 @@ import (
 
 type Ci struct{}
 
-// Build and publish image from Dockerfile using a build context directory
-// in a different location than the current working directory
+// Build helm image used in the helm module.
 func (m *Ci) Build(
 	ctx context.Context,
 ) (*dagger.Container) {
@@ -38,6 +37,7 @@ func (m *Ci) Build(
 		})
 }
 
+// Build and publish helm image used in the helm module.
 func (m *Ci) Publish(
 	ctx context.Context,
 	// URL of the registry

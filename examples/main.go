@@ -40,6 +40,35 @@ func (m *Examples) Version(
 	return nil
 }
 
+func (h *Examples) PackagePush(
+	// method call context
+	ctx context.Context,
+	// URL of the registry
+	registry string,
+	// name of the repository
+	repository string,
+	// registry login username
+	username string,
+	// registry login password
+	password *Secret,
+) error {
+	//	dagger call package-push \
+	//	  --registry registry.puzzle.ch \
+	//	  --repository helm \
+	//	  --username $REGISTRY_HELM_USER \
+	//	  --password env:REGISTRY_HELM_PASSWORD \
+	//	  --directory ./examples/testdata/mychart/
+
+	// directory that contains the Helm Chart
+	directory := dag.CurrentModule().Source().Directory("testdata/mychart/")
+	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (m *Examples) Test(
 	// method call context

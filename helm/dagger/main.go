@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"dagger/helm/internal/dagger"
 	"fmt"
 	"os"
 	"strings"
@@ -23,7 +24,7 @@ type PushOpts struct {
 	Repository string `yaml:"repository"`
 	Oci        bool   `yaml:"oci"`
 	Username   string `yaml:"username"`
-	Password   string
+	Password   *dagger.Secret
 }
 
 func (p PushOpts) getChartFqdn(name string) string {
@@ -71,9 +72,9 @@ func (h *Helm) Version(
 //	dagger call package-push \
 //	  --registry registry.puzzle.ch \
 //	  --repository helm \
-//	  --username REGISTRY_HELM_USER \
-//	  --password REGISTRY_HELM_PASSWORD \
-//	  --directory ./mychart/
+//	  --username $REGISTRY_HELM_USER \
+//	  --password env:REGISTRY_HELM_PASSWORD \
+//	  --directory ./examples/testdata/mychart/
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
@@ -86,7 +87,7 @@ func (h *Helm) PackagePush(
 	// registry login username
 	username string,
 	// registry login password
-	password string,
+	password *dagger.Secret,
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
@@ -115,7 +116,12 @@ func (h *Helm) PackagePush(
 
 	name = strings.TrimSpace(name)
 
-	c, err = c.WithExec([]string{"helm", "registry", "login", opts.Registry, "-u", opts.Username, "-p", opts.Password}).Sync(ctx)
+	c, err = c.
+		WithEnvVariable("REGISTRY_URL", opts.Registry).
+		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+		WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
+		WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
+		Sync(ctx)
 	if err != nil {
 		return false, err
 	}
