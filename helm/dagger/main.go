@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
+
 type Helm struct {
 }
 
@@ -40,16 +42,18 @@ func (p PushOpts) getRepoFqdn() string {
 
 // Get and display the version of the Helm Chart located inside the given directory.
 //
-// Example usage: dagger call version --directory ./mychart/
+// Example usage: dagger call version --directory ./examples/testdata/mychart/
 func (h *Helm) Version(
 	// method call context
 	ctx context.Context,
 	// directory that contains the Helm Chart
 	directory *Directory,
 ) (string, error) {
-	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").
+	c := dag.Container().
+		From(HELM_IMAGE).
 		WithDirectory("/helm", directory).
-		WithWorkdir("/helm")
+		WithWorkdir("/helm").
+		WithoutEntrypoint()
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return "", err
@@ -93,7 +97,10 @@ func (h *Helm) PackagePush(
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
-	c := dag.Container().From("registry.puzzle.ch/cicd/alpine-base:latest").WithDirectory("/helm", directory).WithWorkdir("/helm")
+	c := dag.Container().
+		From("registry.puzzle.ch/cicd/alpine-base:latest").
+		WithDirectory("/helm", directory).
+		WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return false, err
@@ -146,7 +153,7 @@ func (h *Helm) PackagePush(
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
 // Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with the tests.
 //
-// Example usage: dagger call test --directory ./mychart/ --args "."
+// Example usage: dagger call test --directory ./examples/testdata/mychart/ --args "."
 func (h *Helm) Test(
 	// method call context
 	ctx context.Context,
@@ -155,8 +162,12 @@ func (h *Helm) Test(
 	// Helm Unittest arguments
 	args []string,
 ) (string, error) {
-	c := dag.Container().From("helmunittest/helm-unittest").WithDirectory("/helm", directory).WithWorkdir("/helm")
-	out, err := c.WithExec(args).Stdout(ctx)
+	c := dag.Container().
+		From(HELM_IMAGE).
+		WithDirectory("/helm", directory, ContainerWithDirectoryOpts{Owner: "1001"}).
+		WithWorkdir("/helm").
+		WithoutEntrypoint()
+	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
