@@ -10,7 +10,7 @@ tests:
           of: Deployment
       - matchRegex:
           path: metadata.name
-          pattern: -mychart
+          pattern: -dagger-module-helm-test
       - equal:
           path: spec.template.spec.containers[0].image
           value: nginx:latest
