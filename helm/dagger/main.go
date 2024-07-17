@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const REGISTRY string = "quay.io/puzzle/dagger-module-helm:latest"
+const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
 
 type Helm struct {
 }
@@ -50,7 +50,7 @@ func (h *Helm) Version(
 	directory *Directory,
 ) (string, error) {
 	c := dag.Container().
-		From(REGISTRY).
+		From(HELM_IMAGE).
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
@@ -163,7 +163,7 @@ func (h *Helm) Test(
 	args []string,
 ) (string, error) {
 	c := dag.Container().
-		From(REGISTRY).
+		From(HELM_IMAGE).
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
