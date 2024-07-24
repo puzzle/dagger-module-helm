@@ -1,16 +1,22 @@
+
 package main
 
 import (
 	"context"
+	"dagger/go/internal/dagger"
 	"fmt"
 
 	"github.com/sourcegraph/conc/pool"
 )
 
-type Examples struct{}
+type Go struct{}
+
+func (m *Go) Echo(stringArg string) string {
+	return stringArg
+}
 
 // All executes all tests.
-func (m *Examples) All(ctx context.Context) error {
+func (m *Go) All(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.Version)
@@ -19,14 +25,14 @@ func (m *Examples) All(ctx context.Context) error {
 	return p.Wait()
 }
 
-func (m *Examples) Version(
+func (m *Go) Version(
 	// method call context
 	ctx context.Context,
 ) error {
 	const expected = "0.1.1"
 
 	// dagger call version --directory ./examples/testdata/mychart/
-	directory := dag.CurrentModule().Source().Directory("testdata/mychart/")
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	version, err := dag.Helm().Version(ctx, directory)
 
 	if err != nil {
@@ -40,7 +46,7 @@ func (m *Examples) Version(
 	return nil
 }
 
-func (h *Examples) PackagePush(
+func (h *Go) PackagePush(
 	// method call context
 	ctx context.Context,
 	// URL of the registry
@@ -50,7 +56,7 @@ func (h *Examples) PackagePush(
 	// registry login username
 	username string,
 	// registry login password
-	password *Secret,
+	password *dagger.Secret,
 ) error {
 	//	dagger call package-push \
 	//	  --registry registry.puzzle.ch \
@@ -60,7 +66,7 @@ func (h *Examples) PackagePush(
 	//	  --directory ./examples/testdata/mychart/
 
 	// directory that contains the Helm Chart
-	directory := dag.CurrentModule().Source().Directory("testdata/mychart/")
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
 
 	if err != nil {
@@ -70,14 +76,14 @@ func (h *Examples) PackagePush(
 	return nil
 }
 
-func (m *Examples) Test(
+func (m *Go) Test(
 	// method call context
 	ctx context.Context,
 ) error {
 	args := []string{"."}
 
 	// dagger call test --directory ./examples/testdata/mychart/ --args "."
-	directory := dag.CurrentModule().Source().Directory("testdata/mychart/")
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().Test(ctx, directory, args)
 
 	if err != nil {
