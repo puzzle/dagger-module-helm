@@ -4,7 +4,7 @@
   "dependencies": [
     {
       "name": "helm",
-      "source": "../../../"
+      "source": "../../"
     }
   ],
   "source": ".",
