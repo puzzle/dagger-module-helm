@@ -11,10 +11,6 @@ import (
 
 type Go struct{}
 
-func (m *Go) Echo(stringArg string) string {
-	return stringArg
-}
-
 // All executes all tests.
 func (m *Go) All(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
