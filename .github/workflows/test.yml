@@ -27,7 +27,7 @@ jobs:
           TEST_HELM_REGISTRY_HELM_PASSWORD: ${{ secrets.TEST_HELM_REGISTRY_HELM_PASSWORD }}
         run: |
             dagger -m examples/go/ \
-              call package-push \
+              call helm-packagepush \
               --registry ${TEST_HELM_REGISTRY_URL} \
               --repository ${TEST_HELM_REGISTRY_REPOSITORY} \
               --username ${TEST_HELM_REGISTRY_HELM_USER} \

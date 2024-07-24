@@ -15,13 +15,13 @@ type Go struct{}
 func (m *Go) All(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
-	p.Go(m.Version)
-	p.Go(m.Test)
+	p.Go(m.HelmVersion)
+	p.Go(m.HelmTest)
 
 	return p.Wait()
 }
 
-func (m *Go) Version(
+func (m *Go) HelmVersion(
 	// method call context
 	ctx context.Context,
 ) error {
@@ -42,7 +42,7 @@ func (m *Go) Version(
 	return nil
 }
 
-func (h *Go) PackagePush(
+func (h *Go) HelmPackagepush(
 	// method call context
 	ctx context.Context,
 	// URL of the registry
@@ -72,7 +72,7 @@ func (h *Go) PackagePush(
 	return nil
 }
 
-func (m *Go) Test(
+func (m *Go) HelmTest(
 	// method call context
 	ctx context.Context,
 ) error {
