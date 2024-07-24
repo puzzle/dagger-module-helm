@@ -48,7 +48,7 @@ func (h *Helm) Version(
 	// method call context
 	ctx context.Context,
 	// directory that contains the Helm Chart
-	directory *Directory,
+	directory *dagger.Directory,
 ) (string, error) {
 	c := dag.Container().
 		From(HELM_IMAGE).
@@ -79,7 +79,7 @@ func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
 	// directory that contains the Helm Chart
-	directory *Directory,
+	directory *dagger.Directory,
 	// URL of the registry
 	registry string,
 	// name of the repository
@@ -164,13 +164,13 @@ func (h *Helm) Test(
 	// method call context
 	ctx context.Context,
 	// directory that contains the Helm Chart
-	directory *Directory,
+	directory *dagger.Directory,
 	// Helm Unittest arguments
 	args []string,
 ) (string, error) {
 	c := dag.Container().
 		From(HELM_IMAGE).
-		WithDirectory("/helm", directory, ContainerWithDirectoryOpts{Owner: "1001"}).
+		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
