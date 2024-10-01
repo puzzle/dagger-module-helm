@@ -1,16 +1,6 @@
-// A generated module for Go functions
+// Go examples for the Helm module.
 //
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
-//
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
-//
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
+// This module defines the examples for the Daggerverse.	
 
 package main
 
@@ -21,17 +11,63 @@ import (
 
 type Go struct{}
 
-// Returns a container that echoes whatever string argument is provided
-func (m *Go) ContainerEcho(stringArg string) *dagger.Container {
-	return dag.Container().From("alpine:latest").WithExec([]string{"echo", stringArg})
+func (h *Go) HelmPackagepush(
+	// method call context
+	ctx context.Context,
+	// URL of the registry
+	registry string,
+	// name of the repository
+	repository string,
+	// registry login username
+	username string,
+	// registry login password
+	password *dagger.Secret,
+) error {
+	//	dagger call package-push \
+	//	  --registry registry.puzzle.ch \
+	//	  --repository helm \
+	//	  --username $REGISTRY_HELM_USER \
+	//	  --password env:REGISTRY_HELM_PASSWORD \
+	//	  --directory ./examples/testdata/mychart/
+
+	// directory that contains the Helm Chart
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// Returns lines that match a pattern in the files of the provided Directory
-func (m *Go) GrepDir(ctx context.Context, directoryArg *dagger.Directory, pattern string) (string, error) {
-	return dag.Container().
-		From("alpine:latest").
-		WithMountedDirectory("/mnt", directoryArg).
-		WithWorkdir("/mnt").
-		WithExec([]string{"grep", "-R", pattern, "."}).
-		Stdout(ctx)
+func (m *Go) HelmTest(
+	// method call context
+	ctx context.Context,
+) error {
+	args := []string{"."}
+
+	// dagger call test --directory ./examples/testdata/mychart/ --args "."
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	_, err := dag.Helm().Test(ctx, directory, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Example on how to call the Version method.
+// 
+// Get and display the version of the Helm Chart located inside the directory referenced by the chart parameter.
+func (m *Go) HelmVersion(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart, e.g. "./tests/testdata/mychart/"
+	chart *dagger.Directory,
+) (string, error) {
+	return dag.
+			Helm().
+			Version(ctx, chart)
 }
