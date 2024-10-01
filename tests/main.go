@@ -1,15 +1,46 @@
-// Go examples for the Helm module.
-//
-// This module defines the examples for the Daggerverse.	
 
 package main
 
 import (
 	"context"
 	"dagger/go/internal/dagger"
+	"fmt"
+
+	"github.com/sourcegraph/conc/pool"
 )
 
 type Go struct{}
+
+// All executes all tests.
+func (m *Go) All(ctx context.Context) error {
+	p := pool.New().WithErrors().WithContext(ctx)
+
+	p.Go(m.HelmVersion)
+	p.Go(m.HelmTest)
+
+	return p.Wait()
+}
+
+func (m *Go) HelmVersion(
+	// method call context
+	ctx context.Context,
+) error {
+	const expected = "0.1.1"
+
+	// dagger call version --directory ./examples/testdata/mychart/
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	version, err := dag.Helm().Version(ctx, directory)
+
+	if err != nil {
+		return err
+	}
+
+	if version != expected {
+		return fmt.Errorf("expected %q, got %q", expected, version)
+	}
+
+	return nil
+}
 
 func (h *Go) HelmPackagepush(
 	// method call context
@@ -56,18 +87,4 @@ func (m *Go) HelmTest(
 	}
 
 	return nil
-}
-
-// Example on how to call the Version method.
-// 
-// Get and display the version of the Helm Chart located inside the directory referenced by the chart parameter.
-func (m *Go) HelmVersion(
-	// method call context
-	ctx context.Context,
-	// directory that contains the Helm Chart, e.g. "./tests/testdata/mychart/"
-	chart *dagger.Directory,
-) (string, error) {
-	return dag.
-			Helm().
-			Version(ctx, chart)
 }
