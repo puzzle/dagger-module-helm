@@ -6,12 +6,12 @@ package main
 
 import (
 	"context"
-	"dagger/go/internal/dagger"
+	"dagger/examples/internal/dagger"
 )
 
-type Go struct{}
+type Examples struct{}
 
-func (h *Go) HelmPackagepush(
+func (h *Examples) HelmPackagepush(
 	// method call context
 	ctx context.Context,
 	// URL of the registry
@@ -41,7 +41,7 @@ func (h *Go) HelmPackagepush(
 	return nil
 }
 
-func (m *Go) HelmTest(
+func (m *Examples) HelmTest(
 	// method call context
 	ctx context.Context,
 ) error {
@@ -61,7 +61,7 @@ func (m *Go) HelmTest(
 // Example on how to call the Version method.
 // 
 // Get and display the version of the Helm Chart located inside the directory referenced by the chart parameter.
-func (m *Go) HelmVersion(
+func (m *Examples) HelmVersion(
 	// method call context
 	ctx context.Context,
 	// directory that contains the Helm Chart, e.g. "./tests/testdata/mychart/"
