@@ -4,9 +4,9 @@
   "dependencies": [
     {
       "name": "helm",
-      "source": "../../"
+      "source": "../.."
     }
   ],
   "source": ".",
-  "engineVersion": "v0.12.2"
+  "engineVersion": "v0.13.6"
 }
