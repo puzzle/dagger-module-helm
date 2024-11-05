@@ -16,8 +16,7 @@ import (
 
 const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
 
-type Helm struct {
-}
+type Helm struct{}
 
 type PushOpts struct {
 	Registry   string `yaml:"registry"`
