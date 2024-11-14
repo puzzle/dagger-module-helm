@@ -34,3 +34,8 @@ jobs:
               --password env:TEST_HELM_REGISTRY_HELM_PASSWORD
       - name: Display go examples module functions
         run: dagger -m helm/examples/go/ functions
+      - name: Test shell examples
+        run: |
+            source helm/examples/shell/examples.sh
+            helm_test
+            helm_version
