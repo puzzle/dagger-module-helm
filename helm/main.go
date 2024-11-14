@@ -42,7 +42,7 @@ func (p PushOpts) getRepoFqdn() string {
 
 // Get and display the version of the Helm Chart located inside the given directory.
 //
-// Example usage: dagger call version -directory ./helm/examples/testdata/mychart/
+// Example usage: dagger call version --directory ./helm/examples/testdata/mychart/
 func (h *Helm) Version(
 	// method call context
 	ctx context.Context,
