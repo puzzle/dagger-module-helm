@@ -34,26 +34,30 @@ func (h *Examples) HelmPackagepush(
 	return nil
 }
 
-func (m *Examples) HelmTest(
+// Example on how to call the Test method.
+//
+// Run the unit tests for the Helm Chart located inside the directory referenced by the directory parameter.
+// Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the tests inside the passed directory.
+//
+// Return: The Helm unit test output as string.
+func (h *Examples) HelmTest(
 	// method call context
 	ctx context.Context,
-) error {
-	args := []string{"."}
-
-	// dagger call test --directory ./examples/testdata/mychart/ --args "."
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
-	_, err := dag.Helm().Test(ctx, directory, args)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	// directory that contains the Helm Chart, e.g. "./helm/examples/testdata/mychart/"
+	directory *dagger.Directory,
+	// Helm Unittest arguments, e.g. "." to reference the Helm Chart root directory inside the passed directory.
+	args []string,
+) (string, error) {
+	return dag.
+			Helm().
+			Test(ctx, directory, args)
 }
 
 // Example on how to call the Version method.
 // 
 // Get and display the version of the Helm Chart located inside the directory referenced by the directory parameter.
+//
+// Return: The Helm Chart version as string.
 func (m *Examples) HelmVersion(
 	// method call context
 	ctx context.Context,
