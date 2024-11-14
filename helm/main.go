@@ -42,7 +42,7 @@ func (p PushOpts) getRepoFqdn() string {
 
 // Get and display the version of the Helm Chart located inside the given directory.
 //
-// Example usage: dagger call version --directory ./examples/testdata/mychart/
+// Example usage: dagger call version -directory ./helm/examples/testdata/mychart/
 func (h *Helm) Version(
 	// method call context
 	ctx context.Context,
@@ -158,7 +158,7 @@ func (h *Helm) PackagePush(
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
 // Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with the tests.
 //
-// Example usage: dagger call test --directory ./examples/testdata/mychart/ --args "."
+// Example usage: dagger call test --directory ./helm/examples/testdata/mychart/ --args "."
 func (h *Helm) Test(
 	// method call context
 	ctx context.Context,

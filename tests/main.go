@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -26,8 +25,6 @@ func (m *Go) HelmVersion(
 	ctx context.Context,
 ) error {
 	const expected = "0.1.1"
-
-	// dagger call version --directory ./examples/testdata/mychart/
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	version, err := dag.Helm().Version(ctx, directory)
 
@@ -54,13 +51,6 @@ func (h *Go) HelmPackagepush(
 	// registry login password
 	password *dagger.Secret,
 ) error {
-	//	dagger call package-push \
-	//	  --registry registry.puzzle.ch \
-	//	  --repository helm \
-	//	  --username $REGISTRY_HELM_USER \
-	//	  --password env:REGISTRY_HELM_PASSWORD \
-	//	  --directory ./examples/testdata/mychart/
-
 	// directory that contains the Helm Chart
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
@@ -77,8 +67,6 @@ func (m *Go) HelmTest(
 	ctx context.Context,
 ) error {
 	args := []string{"."}
-
-	// dagger call test --directory ./examples/testdata/mychart/ --args "."
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().Test(ctx, directory, args)
 

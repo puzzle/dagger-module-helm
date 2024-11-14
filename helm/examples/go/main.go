@@ -23,13 +23,6 @@ func (h *Examples) HelmPackagepush(
 	// registry login password
 	password *dagger.Secret,
 ) error {
-	//	dagger call package-push \
-	//	  --registry registry.puzzle.ch \
-	//	  --repository helm \
-	//	  --username $REGISTRY_HELM_USER \
-	//	  --password env:REGISTRY_HELM_PASSWORD \
-	//	  --directory ./examples/testdata/mychart/
-
 	// directory that contains the Helm Chart
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
@@ -60,11 +53,11 @@ func (m *Examples) HelmTest(
 
 // Example on how to call the Version method.
 // 
-// Get and display the version of the Helm Chart located inside the directory referenced by the chart parameter.
+// Get and display the version of the Helm Chart located inside the directory referenced by the directory parameter.
 func (m *Examples) HelmVersion(
 	// method call context
 	ctx context.Context,
-	// directory that contains the Helm Chart, e.g. "./tests/testdata/mychart/"
+	// directory that contains the Helm Chart, e.g. "./helm/examples/testdata/mychart/"
 	chart *dagger.Directory,
 ) (string, error) {
 	return dag.
