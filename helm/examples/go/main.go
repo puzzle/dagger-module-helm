@@ -35,6 +35,26 @@ func (h *Examples) HelmPackagepush(
 			PackagePush(ctx, directory, registry, repository, username, password)
 }
 
+// Example on how to call the Lint method.
+//
+// Run helm lint for the Helm Chart located inside the directory referenced by the directory parameter.
+// Use `--args` parameter to pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
+//
+// Return: The Helm lint output as string.
+func (h *Examples) HelmLint(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart, e.g. "./helm/examples/testdata/mychart/"
+	directory *dagger.Directory,
+    // Helm lint arguments
+    // +optional
+	args []string,
+) (string, error) {
+	return dag.
+			Helm().
+			Lint(ctx, directory)
+}
+
 // Example on how to call the Test method.
 //
 // Run the unit tests for the Helm Chart located inside the directory referenced by the directory parameter.
