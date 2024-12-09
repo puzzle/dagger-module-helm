@@ -47,11 +47,12 @@ func (h *Examples) HelmLint(
 	// directory that contains the Helm Chart, e.g. "./helm/examples/testdata/mychart/"
 	directory *dagger.Directory,
     // Helm lint arguments
+    // +optional
 	args []string,
 ) (string, error) {
 	return dag.
 			Helm().
-			Lint(ctx, directory, args)
+			Lint(ctx, directory)
 }
 
 // Example on how to call the Test method.
