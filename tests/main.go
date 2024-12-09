@@ -16,6 +16,9 @@ func (m *Go) All(ctx context.Context) error {
 
 	p.Go(m.HelmVersion)
 	p.Go(m.HelmTest)
+	p.Go(m.HelmLint)
+	p.Go(m.HelmLintWithArg)
+	p.Go(m.HelmLintWithArgs)
 
 	return p.Wait()
 }
@@ -69,6 +72,50 @@ func (m *Go) HelmTest(
 	args := []string{"."}
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().Test(ctx, directory, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Go) HelmLint(
+	// method call context
+	ctx context.Context,
+) error {
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	_, err := dag.Helm().Lint(ctx, directory)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Go) HelmLintWithArg(
+	// method call context
+	ctx context.Context,
+) error {
+	args := dagger.HelmLintOpts{Args: []string{"--quiet"}}
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	_, err := dag.Helm().Lint(ctx, directory, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Go) HelmLintWithArgs(
+	// method call context
+	ctx context.Context,
+) error {
+	args := dagger.HelmLintOpts{Args: []string{"--strict", "--quiet"}}
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	_, err := dag.Helm().Lint(ctx, directory, args)
 
 	if err != nil {
 		return err
