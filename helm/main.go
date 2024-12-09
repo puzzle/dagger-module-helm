@@ -184,6 +184,8 @@ func (h *Helm) Lint(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
     // Helm lint arguments
+    // +optional
+    // +default=[]
     args []string,
 ) (string, error) {
 	c := h.createContainer(directory)
