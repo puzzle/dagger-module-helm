@@ -167,15 +167,45 @@ func (h *Helm) Test(
 	// Helm Unittest arguments
 	args []string,
 ) (string, error) {
-	c := dag.Container().
-		From(HELM_IMAGE).
-		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
-		WithWorkdir("/helm").
-		WithoutEntrypoint()
+	c := h.createContainer(directory)
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
 
 	return out, nil
+}
+
+// Run Helm lint with the given directory.
+//
+// Provide the helm chart directory with pointing to it with the `--directory` flag.
+// Use `--args` parameter to tell pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
+//
+// Example usage: dagger call lint --directory ./helm/examples/testdata/mychart/ --args "--quiet"
+func (h *Helm) Lint(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+    // Helm lint arguments
+    args []string,
+) (string, error) {
+	c := h.createContainer(directory)
+	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
+func (h *Helm) createContainer(
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) *dagger.Container {
+    return dag.Container().
+        From(HELM_IMAGE).
+        WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
+        WithWorkdir("/helm").
+        WithoutEntrypoint()
 }
