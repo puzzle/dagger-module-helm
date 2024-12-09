@@ -175,7 +175,7 @@ func (h *Helm) Test(
 // Run Helm lint with the given directory.
 //
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
-// Use `--args` parameter to tell pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
+// Use `--args` parameter to pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
 //
 // Example usage: dagger call lint --directory ./helm/examples/testdata/mychart/ --args "--quiet"
 func (h *Helm) Lint(

@@ -38,7 +38,7 @@ func (h *Examples) HelmPackagepush(
 // Example on how to call the Lint method.
 //
 // Run helm lint for the Helm Chart located inside the directory referenced by the directory parameter.
-// Use `--args` parameter to tell pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
+// Use `--args` parameter to pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
 //
 // Return: The Helm lint output as string.
 func (h *Examples) HelmLint(
