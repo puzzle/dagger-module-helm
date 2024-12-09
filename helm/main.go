@@ -49,11 +49,7 @@ func (h *Helm) Version(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) (string, error) {
-	c := dag.Container().
-		From(HELM_IMAGE).
-		WithDirectory("/helm", directory).
-		WithWorkdir("/helm").
-		WithoutEntrypoint()
+	c := h.createContainer(directory)
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return "", err
