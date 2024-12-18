@@ -187,13 +187,23 @@ func (h *Helm) Lint(
 	// +optional
 	args []string,
 ) (string, error) {
-	c := h.createContainer(directory)
+	c := h.createContainer(directory).WithMountedDirectory("./charts", h.dependencyUpdate(ctx, directory))
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
 
 	return out, nil
+}
+
+func (h *Helm) dependencyUpdate(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (*dagger.Directory) {
+	c := h.createContainer(directory)
+	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("./charts")
 }
 
 func (h *Helm) createContainer(
