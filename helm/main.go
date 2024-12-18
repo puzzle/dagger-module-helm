@@ -203,7 +203,7 @@ func (h *Helm) dependencyUpdate(
 	directory *dagger.Directory,
 ) (*dagger.Directory) {
 	c := h.createContainer(directory)
-	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("./charts")
+	return c.WithExec([]string{"sh", "-c", "mkdir charts && helm dep update"}).Directory("charts")
 }
 
 func (h *Helm) createContainer(
