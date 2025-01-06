@@ -186,9 +186,23 @@ func (h *Helm) Lint(
 	// Helm lint arguments
 	// +optional
 	args []string,
+	// Update dependencies from "Chart.yaml" to dir "charts/" before packaging.
+	// +default=false
+	// +optional
+	dependencyUpdate bool,
 ) (string, error) {
 	c := h.createContainer(directory)
-	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
+
+	arguments := []string{}
+	if args != nil {
+		arguments = args
+	}
+
+	if dependencyUpdate {
+		arguments = append(arguments, "--dependency-update")
+	}
+
+	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(arguments, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
