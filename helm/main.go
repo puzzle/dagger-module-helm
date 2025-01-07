@@ -187,13 +187,38 @@ func (h *Helm) Lint(
 	// +optional
 	args []string,
 ) (string, error) {
-	c := h.createContainer(directory)
+	var c *dagger.Container
+
+	if h.hasMissingDependencies(ctx, directory) {
+		c = h.createContainer(directory).WithMountedDirectory("./charts", h.dependencyUpdate(directory))
+	} else {
+		c = h.createContainer(directory)
+	}
+
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
 
 	return out, nil
+}
+
+func (h *Helm) hasMissingDependencies(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) bool {
+	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dep list | grep missing"}).Stdout(ctx)
+	return err == nil
+}
+
+func (h *Helm) dependencyUpdate(
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) *dagger.Directory {
+	c := h.createContainer(directory)
+	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("charts")
 }
 
 func (h *Helm) createContainer(

@@ -19,6 +19,7 @@ func (m *Go) All(ctx context.Context) error {
 	p.Go(m.HelmLint)
 	p.Go(m.HelmLintWithArg)
 	p.Go(m.HelmLintWithArgs)
+	p.Go(m.HelmLintWithMissingDependencies)
 
 	return p.Wait()
 }
@@ -116,6 +117,20 @@ func (m *Go) HelmLintWithArgs(
 	args := dagger.HelmLintOpts{Args: []string{"--strict", "--quiet"}}
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
 	_, err := dag.Helm().Lint(ctx, directory, args)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Go) HelmLintWithMissingDependencies(
+	// method call context
+	ctx context.Context,
+) error {
+	directory := dag.CurrentModule().Source().Directory("./testdata/mydependentchart/")
+	_, err := dag.Helm().Lint(ctx, directory)
 
 	if err != nil {
 		return err
