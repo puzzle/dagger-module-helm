@@ -19,7 +19,7 @@ func (m *Go) All(ctx context.Context) error {
 	p.Go(m.HelmLint)
 	p.Go(m.HelmLintWithArg)
 	p.Go(m.HelmLintWithArgs)
-    p.Go(m.HelmLintWithMissingDependencies)
+	p.Go(m.HelmLintWithMissingDependencies)
 
 	return p.Wait()
 }
