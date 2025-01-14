@@ -58,7 +58,7 @@ func (h *Helm) Version(
 	return strings.TrimSpace(version), nil
 }
 
-// Packages and pushes a Helm chart to a specified OCI-compatible registry with authentication.
+// Packages and pushes a Helm chart to a specified OCI-compatible (by default) registry with authentication.
 //
 // Returns true if the chart was successfully pushed, or false if the chart already exists, with error handling for push failures.
 //
@@ -70,6 +70,16 @@ func (h *Helm) Version(
 //	  --username $REGISTRY_HELM_USER \
 //	  --password env:REGISTRY_HELM_PASSWORD \
 //	  --directory ./examples/testdata/mychart/
+//
+// Example usage for pushing to a legacy (non-OCI) Helm repository:
+//
+//	dagger call package-push \
+//	  --registry registry.puzzle.ch \
+//	  --repository helm \
+//	  --username $REGISTRY_HELM_USER \
+//	  --password env:REGISTRY_HELM_PASSWORD \
+//	  --directory ./examples/testdata/mychart/ \
+//        --oci false
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
@@ -83,11 +93,15 @@ func (h *Helm) PackagePush(
 	username string,
 	// registry login password
 	password *dagger.Secret,
+	// Set to false to use legacy Helm repository
+	// +optional
+	// +default=true
+	oci bool,
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
 		Repository: repository,
-		Oci:        true,
+		Oci:        oci,
 		Username:   username,
 		Password:   password,
 	}
