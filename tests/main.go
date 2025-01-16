@@ -43,7 +43,7 @@ func (m *Go) HelmVersion(
 	return nil
 }
 
-func (h *Go) HelmPackagepush(
+func (m *Go) HelmPackagepush(
 	// method call context
 	ctx context.Context,
 	// URL of the registry
@@ -57,6 +57,9 @@ func (h *Go) HelmPackagepush(
 ) error {
 	// directory that contains the Helm Chart
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	//service := m.RegistryService(ctx)
+	service := m.RegistryContainer(ctx).AsService().WithHostname("localregistry")
+	service.Start(ctx)
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
 
 	if err != nil {
@@ -64,6 +67,48 @@ func (h *Go) HelmPackagepush(
 	}
 
 	return nil
+}
+
+func (m *Go) RegistryContainer(
+	ctx context.Context,
+) *dagger.Container {
+	return dag.Container().
+		From("registry:latest").
+		WithExposedPort(5000)
+}
+
+func (m *Go) RegistryService(
+	ctx context.Context,
+) *dagger.Service {
+	return dag.Container().
+		From("registry:latest").
+		WithExposedPort(5000).
+		AsService().
+		WithHostname("localregistry")
+	// service, err := service.Start(ctx)
+	// if err != nil {
+	// 	return nil
+	// }
+	// return service
+}
+
+func (m *Go) Build(
+	_ context.Context,
+	dir *dagger.Directory,
+) *dagger.Container {
+	return dag.Container().
+		From("golang:1.23").
+		WithDirectory("/src", dir).
+		WithWorkdir("/src").
+		//WithExec([]string{"apt", "update"}).
+		//WithExec([]string{"apt", "install", "docker.io", "-y"}).
+		//WithExec([]string{"curl -L https://dl.dagger.io/dagger/install.sh", "| BIN_DIR=/src sh"}).
+		WithEnvVariable("BIN_DIR", "/src/bin").
+		WithExec([]string{"mkdir", "bin/"}).
+		WithExec([]string{"curl", "-fsSL", "https://dl.dagger.io/dagger/install.sh", "-o", "install.sh"}).
+		WithExec([]string{"sh", "install.sh"}).
+		WithExec([]string{"./bin/dagger", "version"}).
+		WithExec([]string{"./bin/dagger", "install", "helm"})
 }
 
 func (m *Go) HelmTest(
