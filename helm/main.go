@@ -33,6 +33,14 @@ func (p PushOpts) getChartFqdn(name string) string {
 	return fmt.Sprintf("%s/%s/%s", p.Registry, p.Repository, name)
 }
 
+func (p PushOpts) getChartFqdnForCurl(name string) string {
+	baseString := p.getChartFqdn(name)
+	if p.Oci {
+		return baseString
+	}
+	return fmt.Sprintf("https://%s", baseString)
+}
+
 func (p PushOpts) getRepoFqdn() string {
 	if p.Oci {
 		return fmt.Sprintf("oci://%s/%s", p.Registry, p.Repository)
@@ -71,15 +79,17 @@ func (h *Helm) Version(
 //	  --password env:REGISTRY_HELM_PASSWORD \
 //	  --directory ./examples/testdata/mychart/
 //
-// Example usage for pushing to a legacy (non-OCI) Helm repository:
+// Example usage for pushing to a legacy (non-OCI) Helm repository assuming the repo name is 'helm'. If your target URL
+// requires a vendor-specific path prefix then add it before the repository name. If you want to put the chart in a subpath in
+// the repository, then append that to the end of the repository name.
 //
 //	dagger call package-push \
-//	  --registry registry.puzzle.ch \
-//	  --repository helm \
-//	  --username $REGISTRY_HELM_USER \
-//	  --password env:REGISTRY_HELM_PASSWORD \
-//	  --directory ./examples/testdata/mychart/ \
-//        --oci false
+//		--registry registry.puzzle.ch \
+//		--repository vendor-specific-prefix/helm/optional/subpath/in/repository \
+//		--username $REGISTRY_HELM_USER \
+//		--password env:REGISTRY_HELM_PASSWORD \
+//		--directory ./examples/testdata/mychart/ \
+//		--oci false
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
@@ -93,7 +103,6 @@ func (h *Helm) PackagePush(
 	username string,
 	// registry login password
 	password *dagger.Secret,
-	// Set to false to use legacy Helm repository
 	// +optional
 	// +default=true
 	oci bool,
@@ -151,11 +160,38 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	_, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
+	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
 		WithExec([]string{"helm", "package", "."}).
 		WithExec([]string{"sh", "-c", "ls"}).
-		WithExec([]string{"helm", "push", fmt.Sprintf("%s-%s.tgz", name, version), opts.getRepoFqdn()}).
 		Sync(ctx)
+
+	if err != nil {
+		return false, err
+	}
+
+	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
+
+	if oci {
+		curlCmd := []string{
+			`curl --variable %REGISTRY_USERNAME`,
+			     `--variable %REGISTRY_PASSWORD`,
+				 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+				 `-T ${PKGFILE}`,
+				 opts.getChartFqdnForCurl(name),
+		}
+
+		c, err = c.
+			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+			WithEnvVariable("PKGFILE", pkgFile).
+			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
+			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
+			Sync(ctx)
+	} else {
+		c, err = c.
+			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
+			Sync(ctx)
+	}
+
 	if err != nil {
 		return false, err
 	}
