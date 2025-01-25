@@ -152,15 +152,15 @@ func (h *Helm) PackagePush(
 	if useNonOciHelmRepo {
 		curlCmd := []string{
 			`curl --variable %REGISTRY_USERNAME`,
-			     `--variable %REGISTRY_PASSWORD`,
-				 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
-				 `-T ${PKGFILE}`,
-				 opts.getChartFqdn(name),
+			`--variable %REGISTRY_PASSWORD`,
+			`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+			`-T`,
+			pkgFile,
+			opts.getRepoFqdn() + "/",
 		}
 
 		c, err = c.
 			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-			WithEnvVariable("PKGFILE", pkgFile).
 			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
 			Sync(ctx)
@@ -276,7 +276,7 @@ func (h *Helm) doesChartExistOnRepo(
 			 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
 			 opts.getChartFqdn(pkgFile),
 			 `--output /dev/null`,
-			 `--silent -Iw '%{http_code}`,
+			 `--silent -Iw '%{http_code}'`,
 	}
 
 	httpCode, err := c.
