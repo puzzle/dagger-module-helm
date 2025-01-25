@@ -84,7 +84,7 @@ func (h *Helm) Version(
 //		--username $REGISTRY_HELM_USER \
 //		--password env:REGISTRY_HELM_PASSWORD \
 //		--directory ./examples/testdata/mychart/ \
-//		--use-non-oci-helm-repo true
+//		--use-non-oci-helm-repo=true
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
