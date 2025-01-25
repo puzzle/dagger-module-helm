@@ -26,26 +26,20 @@ type PushOpts struct {
 	Password   *dagger.Secret
 }
 
-func (p PushOpts) getChartFqdn(name string) string {
+func (p PushOpts) getProtocol() string {
 	if p.Oci {
-		return fmt.Sprintf("oci://%s/%s/%s", p.Registry, p.Repository, name)
+		return "oci"
+	} else {
+		return "https"
 	}
-	return fmt.Sprintf("%s/%s/%s", p.Registry, p.Repository, name)
-}
-
-func (p PushOpts) getChartFqdnForCurl(name string) string {
-	baseString := p.getChartFqdn(name)
-	if p.Oci {
-		return baseString
-	}
-	return fmt.Sprintf("https://%s", baseString)
 }
 
 func (p PushOpts) getRepoFqdn() string {
-	if p.Oci {
-		return fmt.Sprintf("oci://%s/%s", p.Registry, p.Repository)
-	}
-	return fmt.Sprintf("%s/%s", p.Registry, p.Repository)
+	return fmt.Sprintf("%s://%s/%s", p.getProtocol(),  p.Registry, p.Repository)
+}
+
+func (p PushOpts) getChartFqdn(name string) string {
+	return fmt.Sprintf("%s/%s", p.getRepoFqdn(), name)
 }
 
 // Get and display the version of the Helm Chart located inside the given directory.
@@ -80,7 +74,8 @@ func (h *Helm) Version(
 //	  --directory ./examples/testdata/mychart/
 //
 // Example usage for pushing to a legacy (non-OCI) Helm repository assuming the repo name is 'helm'. If your target URL
-// requires a vendor-specific path prefix then add it before the repository name. If you want to put the chart in a subpath in
+// requires a vendor-specific path prefix (for example, JFrog Artifactory usually requires 'artifactory' before the repo
+// name) then add it before the repository name. If you want to put the chart in a subpath in
 // the repository, then append that to the end of the repository name.
 //
 //	dagger call package-push \
@@ -89,7 +84,7 @@ func (h *Helm) Version(
 //		--username $REGISTRY_HELM_USER \
 //		--password env:REGISTRY_HELM_PASSWORD \
 //		--directory ./examples/testdata/mychart/ \
-//		--oci false
+//		--use-non-oci-helm-repo true
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
@@ -103,14 +98,15 @@ func (h *Helm) PackagePush(
 	username string,
 	// registry login password
 	password *dagger.Secret,
+	// use a non-OCI (legacy) Helm repository
 	// +optional
-	// +default=true
-	oci bool,
+	// +default=false
+	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
 		Repository: repository,
-		Oci:        oci,
+		Oci:        !useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
 	}
@@ -133,31 +129,15 @@ func (h *Helm) PackagePush(
 	}
 
 	name = strings.TrimSpace(name)
+	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
-	c, err = c.
-		WithEnvVariable("REGISTRY_URL", opts.Registry).
-		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-		WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
-		WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
-		Sync(ctx)
+	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
 	if err != nil {
 		return false, err
 	}
 
-	//TODO: Refactor with return
-	c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	exc, err := c.File("/ec").Contents(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if exc == "0" {
-		//Chart exists
-		return false, nil
+	if chartExists {
+		return false, fmt.Errorf("Chart already exists on server.")
 	}
 
 	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
@@ -169,15 +149,13 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
-
-	if oci {
+	if useNonOciHelmRepo {
 		curlCmd := []string{
 			`curl --variable %REGISTRY_USERNAME`,
 			     `--variable %REGISTRY_PASSWORD`,
 				 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
 				 `-T ${PKGFILE}`,
-				 opts.getChartFqdnForCurl(name),
+				 opts.getChartFqdn(name),
 		}
 
 		c, err = c.
@@ -251,6 +229,78 @@ func (h *Helm) Lint(
 	}
 
 	return out, nil
+}
+
+func (h *Helm) doesChartExistOnRepo(
+	ctx context.Context,
+	c *dagger.Container,
+	opts *PushOpts,
+	name string,
+	version string,
+) (bool, error) {
+	if opts.Oci {
+		c, err := c.
+			WithEnvVariable("REGISTRY_URL", opts.Registry).
+			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
+			WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
+			Sync(ctx)
+		if err != nil {
+			return false, err
+		}
+
+		//TODO: Refactor with return
+		c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
+		if err != nil {
+			return false, err
+		}
+
+		exc, err := c.File("/ec").Contents(ctx)
+		if err != nil {
+			return false, err
+		}
+
+		if exc == "0" {
+			//Chart exists
+			return true, nil
+		} 
+
+		return false, nil
+	}
+	// else non-OCI
+	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
+	curlCmd := []string{
+		`curl --variable %REGISTRY_USERNAME`,
+			 `--variable %REGISTRY_PASSWORD`,
+			 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+			 opts.getChartFqdn(pkgFile),
+			 `--output /dev/null`,
+			 `--silent -Iw '%{http_code}`,
+	}
+
+	httpCode, err := c.
+		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+		WithEnvVariable("PKGFILE", pkgFile).
+		WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
+		WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
+		Stdout(ctx)
+
+	if err != nil {
+		return false, err
+	}
+
+	httpCode = strings.TrimSpace(httpCode)
+
+	if httpCode == "200" {
+		// Chart exists
+		return true, nil
+	}
+
+	if httpCode == "404" {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
 }
 
 func (h *Helm) hasMissingDependencies(
