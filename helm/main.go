@@ -269,6 +269,7 @@ func (h *Helm) doesChartExistOnRepo(
 	}
 	// else non-OCI
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
+	// Do a GET of the chart but with response headers only so we do not download the chart
 	curlCmd := []string{
 		`curl --variable %REGISTRY_USERNAME`,
 			 `--variable %REGISTRY_PASSWORD`,
@@ -280,7 +281,6 @@ func (h *Helm) doesChartExistOnRepo(
 
 	httpCode, err := c.
 		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-		WithEnvVariable("PKGFILE", pkgFile).
 		WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 		WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
 		Stdout(ctx)
