@@ -91,9 +91,12 @@ func (m *Go) HelmPackagePushWithExistingChart(
 ) error {
 	// directory that contains the Helm Chart
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
-    randomString := fmt.Sprintf("%d", time.Now().UnixNano())
-    // set name and version to arbitrary values
-	directory = directory.WithoutFile("Chart.yaml").WithNewFile("Chart.yaml", fmt.Sprintf(`
+	randomString := fmt.Sprintf("%d", time.Now().UnixNano())
+	// set name and version to arbitrary values
+	directory = directory.
+					WithoutFile("Chart.yaml").
+					WithNewFile("Chart.yaml",
+						fmt.Sprintf(`
 apiVersion: v2
 name: dagger-module-helm-test-%s
 description: A Helm chart
