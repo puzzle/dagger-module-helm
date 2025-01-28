@@ -4,6 +4,7 @@ import (
 	"context"
 	"dagger/go/internal/dagger"
 	"fmt"
+	"time"
 
 	"github.com/sourcegraph/conc/pool"
 )
@@ -21,6 +22,7 @@ func (m *Go) All(ctx context.Context) error {
 	p.Go(m.HelmLintWithArgs)
 	p.Go(m.HelmLintWithMissingDependencies)
 	p.Go(m.HelmPackagePush)
+	p.Go(m.HelmPackagePushWithExistingChart)
 
 	return p.Wait()
 }
@@ -78,6 +80,41 @@ func (m *Go) HelmPackagePush(
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *Go) HelmPackagePushWithExistingChart(
+	// method call context
+	ctx context.Context,
+) error {
+	// directory that contains the Helm Chart
+	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+    randomString := fmt.Sprintf("%d", time.Now().UnixNano())
+    // set name and version to arbitrary values
+	directory = directory.WithoutFile("Chart.yaml").WithNewFile("Chart.yaml", fmt.Sprintf(`
+apiVersion: v2
+name: dagger-module-helm-test-%s
+description: A Helm chart
+type: application
+version: 0.1.%s
+`, randomString, randomString))
+
+	returnValue, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
+	if err != nil {
+		return err
+	}
+	if !returnValue {
+		return fmt.Errorf("should return true because chart does not exists")
+	}
+
+	returnValue, err = dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username"+randomString, dag.SetSecret("password", "secret"))
+	if err != nil {
+		return err
+	}
+	if returnValue {
+		return fmt.Errorf("should return false because chart already exists")
 	}
 
 	return nil
