@@ -137,7 +137,7 @@ func (h *Helm) PackagePush(
 	}
 
 	if chartExists {
-		return false, fmt.Errorf("Chart already exists on server.")
+		return false, nil
 	}
 
 	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
