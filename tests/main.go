@@ -60,7 +60,7 @@ func (m *Go) HelmPackagepush(
 	// registry login password
 	password *dagger.Secret,
 ) error {
-	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:4]
+	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:8]
 	// directory that contains the Helm Chart
 	directory := m.chartWithVersionSuffix(dag.CurrentModule().Source().Directory("./testdata/mychart/"), randomString)
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
@@ -106,7 +106,7 @@ func (m *Go) HelmPackagePushWithExistingChart(
 	// method call context
 	ctx context.Context,
 ) error {
-	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:4]
+	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:8]
 	// directory that contains the Helm Chart
 	directory := m.chartWithVersionSuffix(dag.CurrentModule().Source().Directory("./testdata/mychart/"), randomString)
 
