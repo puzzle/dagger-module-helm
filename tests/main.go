@@ -213,11 +213,11 @@ func (m *Go) chartWithVersionSuffix(
 		WithNewFile("Chart.yaml",
 			fmt.Sprintf(`
 apiVersion: v2
-name: dagger-module-helm-test-%s
+name: dagger-module-helm-test
 description: A Helm chart
 type: application
 version: 0.1.%s
-`, randomString, randomString))
+`, randomString))
 
 	return directory
 }
