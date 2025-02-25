@@ -5,6 +5,10 @@
   ],
   "packageRules": [
     {
+      "matchFiles": ["**/go.mod"], // Dagger module go.mod is managed by dagger
+      "enabled": false
+    },
+    {
       "matchUpdateTypes": ["minor", "patch"],
       "matchCurrentVersion": "!/^0/",
       "automerge": true
