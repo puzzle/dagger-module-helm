@@ -22,6 +22,7 @@ func (m *Go) All(ctx context.Context) error {
 	p.Go(m.HelmLintWithArgs)
 	p.Go(m.HelmLintWithMissingDependencies)
 	p.Go(m.HelmPackagePush)
+	p.Go(m.HelmPackagePushNonOci)
 	p.Go(m.HelmPackagePushWithExistingChart)
 
 	return p.Wait()
@@ -47,7 +48,7 @@ func (m *Go) HelmVersion(
 }
 
 // requires valid credentials, called from Github actions
-func (h *Go) HelmPackagepush(
+func (m *Go) HelmPackagepush(
 	// method call context
 	ctx context.Context,
 	// URL of the registry
@@ -59,8 +60,9 @@ func (h *Go) HelmPackagepush(
 	// registry login password
 	password *dagger.Secret,
 ) error {
+	randomString := fmt.Sprintf("%d", time.Now().UnixNano())
 	// directory that contains the Helm Chart
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := m.chartWithVersionSuffix(dag.CurrentModule().Source().Directory("./testdata/mychart/"), randomString)
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
 
 	if err != nil {
@@ -85,24 +87,28 @@ func (m *Go) HelmPackagePush(
 	return nil
 }
 
-func (m *Go) HelmPackagePushWithExistingChart(
+func (m *Go) HelmPackagePushNonOci(
 	// method call context
 	ctx context.Context,
 ) error {
 	// directory that contains the Helm Chart
 	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{UseNonOciHelmRepo: true})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Go) HelmPackagePushWithExistingChart(
+	// method call context
+	ctx context.Context,
+) error {
 	randomString := fmt.Sprintf("%d", time.Now().UnixNano())
-	// set name and version to arbitrary values
-	directory = directory.
-					WithoutFile("Chart.yaml").
-					WithNewFile("Chart.yaml",
-						fmt.Sprintf(`
-apiVersion: v2
-name: dagger-module-helm-test-%s
-description: A Helm chart
-type: application
-version: 0.1.%s
-`, randomString, randomString))
+	// directory that contains the Helm Chart
+	directory := m.chartWithVersionSuffix(dag.CurrentModule().Source().Directory("./testdata/mychart/"), randomString)
 
 	returnValue, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
 	if err != nil {
@@ -194,4 +200,24 @@ func (m *Go) HelmLintWithMissingDependencies(
 	}
 
 	return nil
+}
+
+func (m *Go) chartWithVersionSuffix(
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+	randomString string,
+) *dagger.Directory {
+	// set name and version to arbitrary values
+	directory = directory.
+		WithoutFile("Chart.yaml").
+		WithNewFile("Chart.yaml",
+			fmt.Sprintf(`
+apiVersion: v2
+name: dagger-module-helm-test-%s
+description: A Helm chart
+type: application
+version: 0.1.%s
+`, randomString, randomString))
+
+	return directory
 }
