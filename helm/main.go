@@ -149,7 +149,7 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-    c = c.
+	c = c.
 		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
 		WithSecretVariable("REGISTRY_PASSWORD", opts.Password)
 
