@@ -166,6 +166,8 @@ func (h *Helm) PackagePush(
 			Sync(ctx)
 	} else {
 		c, err = c.
+            WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+            WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
 			Sync(ctx)
 	}
