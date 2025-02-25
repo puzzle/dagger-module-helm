@@ -149,6 +149,10 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
+    c = c.
+		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+		WithSecretVariable("REGISTRY_PASSWORD", opts.Password)
+
 	if useNonOciHelmRepo {
 		curlCmd := []string{
 			`curl --variable %REGISTRY_USERNAME`,
@@ -160,14 +164,10 @@ func (h *Helm) PackagePush(
 		}
 
 		c, err = c.
-			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
 			Sync(ctx)
 	} else {
 		c, err = c.
-            WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-            WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
 			Sync(ctx)
 	}
