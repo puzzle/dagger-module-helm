@@ -168,7 +168,10 @@ func (h *Helm) PackagePush(
 			Sync(ctx)
 	} else {
 		c, err = c.
+		    WithEnvVariable("REGISTRY_URL", opts.Registry).
+            WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
+			WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 	}
 
@@ -246,6 +249,7 @@ func (h *Helm) doesChartExistOnRepo(
 			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
 			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
+            WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 		if err != nil {
 			return false, err
@@ -285,6 +289,7 @@ func (h *Helm) doesChartExistOnRepo(
 		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
 		WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 		WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
+        WithoutSecretVariable("REGISTRY_PASSWORD").
 		Stdout(ctx)
 
 	if err != nil {

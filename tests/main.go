@@ -216,7 +216,7 @@ apiVersion: v2
 name: dagger-module-helm-test
 description: A Helm chart
 type: application
-version: 0.1.1%s
+version: 0.1.1-%s
 `, randomString))
 
 	return directory
