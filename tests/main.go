@@ -211,7 +211,7 @@ func (m *Go) chartWithVersionSuffix(
 	directory = directory.
 		WithoutFile("Chart.yaml").
 		WithNewFile("Chart.yaml",
-			fmt.Sprintf(`
+		fmt.Sprintf(`
 apiVersion: v2
 name: dagger-module-helm-test
 description: A Helm chart
