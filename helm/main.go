@@ -24,6 +24,8 @@ type PushOpts struct {
 	Oci        bool   `yaml:"oci"`
 	Username   string `yaml:"username"`
 	Password   *dagger.Secret
+	Version    string `yaml:"version"`
+	AppVersion    string `yaml:"appVersion"`
 }
 
 func (p PushOpts) getProtocol() string {
@@ -40,6 +42,17 @@ func (p PushOpts) getRepoFqdn() string {
 
 func (p PushOpts) getChartFqdn(name string) string {
 	return fmt.Sprintf("%s/%s", p.getRepoFqdn(), name)
+}
+
+func (p PushOpts) getHelmPkgCmd() []string {
+	helmPkgCmd := []string{"helm", "package", "."}
+	if p.Version != "" {
+		helmPkgCmd = append(helmPkgCmd, "--version", p.Version)
+	}
+	if p.AppVersion != "" {
+		helmPkgCmd = append(helmPkgCmd, "--app-version", p.AppVersion)
+	}
+	return helmPkgCmd
 }
 
 // Get and display the version of the Helm Chart located inside the given directory.
@@ -102,6 +115,14 @@ func (h *Helm) PackagePush(
 	// +optional
 	// +default=false
 	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	// set chart version when packaging
+	// +optional
+	// default=""
+	setVersionTo string,
+	// set chart appVersion when packaging
+	// +optional
+	// default=""
+	setAppVersionTo string,
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
@@ -109,6 +130,8 @@ func (h *Helm) PackagePush(
 		Oci:        !useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
+		Version:    setVersionTo,
+		AppVersion: setAppVersionTo,
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
@@ -141,7 +164,7 @@ func (h *Helm) PackagePush(
 	}
 
 	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
-		WithExec([]string{"helm", "package", "."}).
+		WithExec(opts.getHelmPkgCmd()).
 		WithExec([]string{"sh", "-c", "ls"}).
 		Sync(ctx)
 
