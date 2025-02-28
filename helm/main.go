@@ -102,6 +102,14 @@ func (h *Helm) PackagePush(
 	// +optional
 	// +default=false
 	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	// set chart version when packaging
+	// +optional
+	// default=""
+	setVersionTo string,
+	// set chart appVersion when packaging
+	// +optional
+	// default=""
+	setAppVersionTo string,
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
@@ -140,8 +148,16 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
+	helmPkgCmd := []string{"helm", "package", "."}
+	if setVersionTo != "" {
+		helmPkgCmd = append(helmPkgCmd, "--version", setVersionTo)
+	}
+	if setAppVersionTo != "" {
+		helmPkgCmd = append(helmPkgCmd, "--app-version", setAppVersionTo)
+	}
+
 	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
-		WithExec([]string{"helm", "package", "."}).
+		WithExec(helmPkgCmd).
 		WithExec([]string{"sh", "-c", "ls"}).
 		Sync(ctx)
 
