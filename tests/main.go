@@ -16,6 +16,7 @@ func (m *Go) All(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.HelmVersion)
+	p.Go(m.HelmAppVersion)
 	p.Go(m.HelmTest)
 	p.Go(m.HelmLint)
 	p.Go(m.HelmLintWithArg)
@@ -24,6 +25,8 @@ func (m *Go) All(ctx context.Context) error {
 	p.Go(m.HelmPackagePush)
 	p.Go(m.HelmPackagePushNonOci)
 	p.Go(m.HelmPackagePushWithExistingChart)
+	p.Go(m.HelmPackagePushWithVersion)
+	p.Go(m.HelmPackagePushWithAppVersion)
 
 	return p.Wait()
 }
@@ -32,9 +35,28 @@ func (m *Go) HelmVersion(
 	// method call context
 	ctx context.Context,
 ) error {
-	const expected = "0.1.1"
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	const expected = originalVersion
+	directory := Mychart.DaggerDirectory()
 	version, err := dag.Helm().Version(ctx, directory)
+
+	if err != nil {
+		return err
+	}
+
+	if version != expected {
+		return fmt.Errorf("expected %q, got %q", expected, version)
+	}
+
+	return nil
+}
+
+func (m *Go) HelmAppVersion(
+	// method call context
+	ctx context.Context,
+) error {
+	const expected = originalAppVersion
+	directory := Mychart.DaggerDirectory()
+	version, err := dag.Helm().AppVersion(ctx, directory)
 
 	if err != nil {
 		return err
@@ -62,12 +84,18 @@ func (m *Go) HelmPackagepush(
 ) error {
 	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:8]
 	// directory that contains the Helm Chart
-	directory := m.chartWithVersionSuffix(dag.CurrentModule().Source().Directory("./testdata/mychart/"), randomString)
+	directory := Mychart.
+					WithOriginalVersionSuffix(randomString).
+					DaggerDirectory()
+
 	_, err := dag.Helm().PackagePush(ctx, directory, registry, repository, username, password)
 
 	if err != nil {
 		return err
 	}
+
+	// Reset version back to original
+	Mychart.Reset()
 
 	return nil
 }
@@ -77,7 +105,7 @@ func (m *Go) HelmPackagePush(
 	ctx context.Context,
 ) error {
 	// directory that contains the Helm Chart
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
 
 	if err != nil {
@@ -92,7 +120,7 @@ func (m *Go) HelmPackagePushNonOci(
 	ctx context.Context,
 ) error {
 	// directory that contains the Helm Chart
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{UseNonOciHelmRepo: true})
 
 	if err != nil {
@@ -102,13 +130,70 @@ func (m *Go) HelmPackagePushNonOci(
 	return nil
 }
 
+func (m *Go) HelmPackagePushWithVersion(
+	// method call context
+	ctx context.Context,
+) error {
+	// directory that contains the Helm Chart
+	const differentVersion = "0.6.7"
+	directory := Mychart.DaggerDirectory()
+	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{Version: differentVersion})
+
+	if err != nil {
+		return err
+	}
+
+	version, err := dag.Helm().Version(ctx, directory)
+
+	if err != nil {
+		return err
+	}
+
+	if version != differentVersion {
+		return fmt.Errorf("expected %q, got %q", differentVersion, version)
+	}
+
+	// Reset version back to original
+	Mychart.Reset()
+
+	return nil
+}
+
+func (m *Go) HelmPackagePushWithAppVersion(
+	// method call context
+	ctx context.Context,
+) error {
+	// directory that contains the Helm Chart
+	const differentAppVersion = "0.9.2"
+	directory := Mychart.DaggerDirectory()
+	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{AppVersion: differentAppVersion})
+
+	if err != nil {
+		return err
+	}
+
+	appVersion, err := dag.Helm().AppVersion(ctx, directory)
+
+	if err != nil {
+		return err
+	}
+
+	if appVersion != differentAppVersion {
+		return fmt.Errorf("expected %q, got %q", differentAppVersion, appVersion)
+	}
+
+	// Reset version back to original
+	Mychart.Reset()
+
+	return nil
+}
 func (m *Go) HelmPackagePushWithExistingChart(
 	// method call context
 	ctx context.Context,
 ) error {
 	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:8]
 	// directory that contains the Helm Chart
-	directory := m.chartWithVersionSuffix(dag.CurrentModule().Source().Directory("./testdata/mychart/"), randomString)
+	directory := Mychart.DaggerDirectory()
 
 	returnValue, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
 	if err != nil {
@@ -134,7 +219,7 @@ func (m *Go) HelmTest(
 	ctx context.Context,
 ) error {
 	args := []string{"."}
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().Test(ctx, directory, args)
 
 	if err != nil {
@@ -148,7 +233,7 @@ func (m *Go) HelmLint(
 	// method call context
 	ctx context.Context,
 ) error {
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().Lint(ctx, directory)
 
 	if err != nil {
@@ -163,7 +248,7 @@ func (m *Go) HelmLintWithArg(
 	ctx context.Context,
 ) error {
 	args := dagger.HelmLintOpts{Args: []string{"--quiet"}}
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().Lint(ctx, directory, args)
 
 	if err != nil {
@@ -178,7 +263,7 @@ func (m *Go) HelmLintWithArgs(
 	ctx context.Context,
 ) error {
 	args := dagger.HelmLintOpts{Args: []string{"--strict", "--quiet"}}
-	directory := dag.CurrentModule().Source().Directory("./testdata/mychart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().Lint(ctx, directory, args)
 
 	if err != nil {
@@ -192,7 +277,7 @@ func (m *Go) HelmLintWithMissingDependencies(
 	// method call context
 	ctx context.Context,
 ) error {
-	directory := dag.CurrentModule().Source().Directory("./testdata/mydependentchart/")
+	directory := Mychart.DaggerDirectory()
 	_, err := dag.Helm().Lint(ctx, directory)
 
 	if err != nil {
@@ -202,22 +287,3 @@ func (m *Go) HelmLintWithMissingDependencies(
 	return nil
 }
 
-func (m *Go) chartWithVersionSuffix(
-	// directory that contains the Helm Chart
-	directory *dagger.Directory,
-	randomString string,
-) *dagger.Directory {
-	// set name and version to arbitrary values
-	directory = directory.
-		WithoutFile("Chart.yaml").
-		WithNewFile("Chart.yaml",
-fmt.Sprintf(`
-apiVersion: v2
-name: dagger-module-helm-test
-description: A Helm chart
-type: application
-version: 0.1.1-%s
-`, randomString))
-
-	return directory
-}
