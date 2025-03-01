@@ -24,6 +24,8 @@ type PushOpts struct {
 	Oci        bool   `yaml:"oci"`
 	Username   string `yaml:"username"`
 	Password   *dagger.Secret
+	Version    string `yaml:"version"`
+	AppVersion    string `yaml:"appVersion"`
 }
 
 func (p PushOpts) getProtocol() string {
@@ -40,6 +42,17 @@ func (p PushOpts) getRepoFqdn() string {
 
 func (p PushOpts) getChartFqdn(name string) string {
 	return fmt.Sprintf("%s/%s", p.getRepoFqdn(), name)
+}
+
+func (p PushOpts) getHelmPkgCmd() []string {
+	helmPkgCmd := []string{"helm", "package", "."}
+	if p.Version != "" {
+		helmPkgCmd = append(helmPkgCmd, "--version", p.Version)
+	}
+	if p.AppVersion != "" {
+		helmPkgCmd = append(helmPkgCmd, "--app-version", p.AppVersion)
+	}
+	return helmPkgCmd
 }
 
 // Get and display the version of the Helm Chart located inside the given directory.
@@ -117,6 +130,8 @@ func (h *Helm) PackagePush(
 		Oci:        !useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
+		Version:    setVersionTo,
+		AppVersion: setAppVersionTo,
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
@@ -148,16 +163,8 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	helmPkgCmd := []string{"helm", "package", "."}
-	if setVersionTo != "" {
-		helmPkgCmd = append(helmPkgCmd, "--version", setVersionTo)
-	}
-	if setAppVersionTo != "" {
-		helmPkgCmd = append(helmPkgCmd, "--app-version", setAppVersionTo)
-	}
-
 	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
-		WithExec(helmPkgCmd).
+		WithExec(opts.getHelmPkgCmd()).
 		WithExec([]string{"sh", "-c", "ls"}).
 		Sync(ctx)
 
