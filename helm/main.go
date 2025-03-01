@@ -142,13 +142,17 @@ func (h *Helm) PackagePush(
 	// default=""
 	setAppVersionTo string,
 ) (bool, error) {
+	version, err := h.valueOrQueryChart(setVersionTo, ctx, directory, ".version")
+	if err != nil {
+		return false, err
+	}
 	opts := PushOpts{
 		Registry:   registry,
 		Repository: repository,
 		Oci:        !useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
-		Version:    setVersionTo,
+		Version:    version,
 		AppVersion: setAppVersionTo,
 	}
 
@@ -157,19 +161,12 @@ func (h *Helm) PackagePush(
 		From("registry.puzzle.ch/cicd/alpine-base:latest").
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
+
+	name, err := h.queryChartWithYq(ctx, directory, ".name")
 	if err != nil {
 		return false, err
 	}
 
-	version = strings.TrimSpace(version)
-
-	name, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.name' -"}).Stdout(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	name = strings.TrimSpace(name)
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
 	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
@@ -373,7 +370,7 @@ func (h *Helm) hasMissingDependencies(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) bool {
-	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dep list | grep missing"}).Stdout(ctx)
+	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dependency list | grep missing"}).Stdout(ctx)
 	return err == nil
 }
 
@@ -382,7 +379,7 @@ func (h *Helm) dependencyUpdate(
 	directory *dagger.Directory,
 ) *dagger.Directory {
 	c := h.createContainer(directory)
-	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("charts")
+	return c.WithExec([]string{"sh", "-c", "helm dependency update"}).Directory("charts")
 }
 
 func (h *Helm) createContainer(
@@ -394,4 +391,17 @@ func (h *Helm) createContainer(
 		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
+}
+
+// coalesce returns the first non-empty string from the provided arguments.
+func (h *Helm) valueOrQueryChart(
+	theValue string, 
+	ctx context.Context, 
+	directory *dagger.Directory, 
+	yqQuery string,
+) (string, error) {
+	if theValue != "" {
+		return strings.TrimSpace(theValue), nil
+	}
+	return h.queryChartWithYq(ctx, directory, yqQuery)
 }

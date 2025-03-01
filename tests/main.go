@@ -193,7 +193,9 @@ func (m *Go) HelmPackagePushWithExistingChart(
 ) error {
 	randomString := fmt.Sprintf("%d", time.Now().UnixNano())[0:8]
 	// directory that contains the Helm Chart
-	directory := Mychart.DaggerDirectory()
+	directory := Mychart.
+					WithOriginalVersionSuffix(randomString).
+					DaggerDirectory()
 
 	returnValue, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
 	if err != nil {
@@ -210,6 +212,9 @@ func (m *Go) HelmPackagePushWithExistingChart(
 	if returnValue {
 		return fmt.Errorf("should return false because chart already exists")
 	}
+
+	// Reset the chart to its original content
+	Mychart.Reset()
 
 	return nil
 }
@@ -277,7 +282,8 @@ func (m *Go) HelmLintWithMissingDependencies(
 	// method call context
 	ctx context.Context,
 ) error {
-	directory := Mychart.DaggerDirectory()
+	directory := Mydependentchart.
+					DaggerDirectory()
 	_, err := dag.Helm().Lint(ctx, directory)
 
 	if err != nil {
