@@ -55,6 +55,18 @@ func (p PushOpts) getHelmPkgCmd() []string {
 	return helmPkgCmd
 }
 
+// Get and display the name of the Helm Chart located inside the given directory.
+//
+// Example usage: dagger call name --directory ./helm/examples/testdata/mychart/
+func (h *Helm) Name(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (string, error) {
+	return h.queryChartWithYq(ctx, directory, ".name")
+}
+
 // Get and display the version of the Helm Chart located inside the given directory.
 //
 // Example usage: dagger call version --directory ./helm/examples/testdata/mychart/
@@ -64,13 +76,19 @@ func (h *Helm) Version(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) (string, error) {
-	c := h.createContainer(directory)
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
-	if err != nil {
-		return "", err
-	}
+	return h.queryChartWithYq(ctx, directory, ".version")
+}
 
-	return strings.TrimSpace(version), nil
+// Get and display the appVersion of the Helm Chart located inside the given directory.
+//
+// Example usage: dagger call app-version --directory ./helm/examples/testdata/mychart/
+func (h *Helm) AppVersion(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (string, error) {
+	return h.queryChartWithYq(ctx, directory, ".appVersion")
 }
 
 // Packages and pushes a Helm chart to a specified OCI-compatible (by default) registry with authentication.
@@ -331,6 +349,22 @@ func (h *Helm) doesChartExistOnRepo(
 	}
 
 	return false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
+}
+
+func (h *Helm) queryChartWithYq(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+	yqQuery string,
+) (string, error) {
+	c := h.createContainer(directory)
+	version, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf(`helm show chart . | yq eval '%s' -`, yqQuery)}).Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(version), nil
 }
 
 func (h *Helm) hasMissingDependencies(
