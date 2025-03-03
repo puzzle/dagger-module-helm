@@ -157,9 +157,14 @@ func (h *Helm) PackagePush(
 		From("registry.puzzle.ch/cicd/alpine-base:latest").
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
+
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return false, err
+	}
+
+	if opts.Version != "" {
+		version = opts.Version
 	}
 
 	version = strings.TrimSpace(version)
@@ -373,7 +378,7 @@ func (h *Helm) hasMissingDependencies(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) bool {
-	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dep list | grep missing"}).Stdout(ctx)
+	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dependency list | grep missing"}).Stdout(ctx)
 	return err == nil
 }
 
@@ -382,7 +387,7 @@ func (h *Helm) dependencyUpdate(
 	directory *dagger.Directory,
 ) *dagger.Directory {
 	c := h.createContainer(directory)
-	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("charts")
+	return c.WithExec([]string{"sh", "-c", "helm dependency update"}).Directory("charts")
 }
 
 func (h *Helm) createContainer(
