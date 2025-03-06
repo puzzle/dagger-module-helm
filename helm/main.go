@@ -24,6 +24,8 @@ type PushOpts struct {
 	Oci        bool   `yaml:"oci"`
 	Username   string `yaml:"username"`
 	Password   *dagger.Secret
+	Version    string `yaml:"version"`
+	AppVersion    string `yaml:"appVersion"`
 }
 
 func (p PushOpts) getProtocol() string {
@@ -42,6 +44,29 @@ func (p PushOpts) getChartFqdn(name string) string {
 	return fmt.Sprintf("%s/%s", p.getRepoFqdn(), name)
 }
 
+func (p PushOpts) getHelmPkgCmd() []string {
+	helmPkgCmd := []string{"helm", "package", "."}
+	if p.Version != "" {
+		helmPkgCmd = append(helmPkgCmd, "--version", p.Version)
+	}
+	if p.AppVersion != "" {
+		helmPkgCmd = append(helmPkgCmd, "--app-version", p.AppVersion)
+	}
+	return helmPkgCmd
+}
+
+// Get and display the name of the Helm Chart located inside the given directory.
+//
+// Example usage: dagger call name --directory ./helm/examples/testdata/mychart/
+func (h *Helm) Name(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (string, error) {
+	return h.queryChartWithYq(ctx, directory, ".name")
+}
+
 // Get and display the version of the Helm Chart located inside the given directory.
 //
 // Example usage: dagger call version --directory ./helm/examples/testdata/mychart/
@@ -51,13 +76,19 @@ func (h *Helm) Version(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) (string, error) {
-	c := h.createContainer(directory)
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
-	if err != nil {
-		return "", err
-	}
+	return h.queryChartWithYq(ctx, directory, ".version")
+}
 
-	return strings.TrimSpace(version), nil
+// Get and display the appVersion of the Helm Chart located inside the given directory.
+//
+// Example usage: dagger call app-version --directory ./helm/examples/testdata/mychart/
+func (h *Helm) AppVersion(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (string, error) {
+	return h.queryChartWithYq(ctx, directory, ".appVersion")
 }
 
 // Packages and pushes a Helm chart to a specified OCI-compatible (by default) registry with authentication.
@@ -102,13 +133,27 @@ func (h *Helm) PackagePush(
 	// +optional
 	// +default=false
 	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	// set chart version when packaging
+	// +optional
+	// default=""
+	setVersionTo string,
+	// set chart appVersion when packaging
+	// +optional
+	// default=""
+	setAppVersionTo string,
 ) (bool, error) {
+	version, err := h.valueOrQueryChart(setVersionTo, ctx, directory, ".version")
+	if err != nil {
+		return false, err
+	}
 	opts := PushOpts{
 		Registry:   registry,
 		Repository: repository,
 		Oci:        !useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
+		Version:    version,
+		AppVersion: setAppVersionTo,
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
@@ -116,19 +161,12 @@ func (h *Helm) PackagePush(
 		From("registry.puzzle.ch/cicd/alpine-base:latest").
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
+
+	name, err := h.queryChartWithYq(ctx, directory, ".name")
 	if err != nil {
 		return false, err
 	}
 
-	version = strings.TrimSpace(version)
-
-	name, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.name' -"}).Stdout(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	name = strings.TrimSpace(name)
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
 	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
@@ -141,7 +179,7 @@ func (h *Helm) PackagePush(
 	}
 
 	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
-		WithExec([]string{"helm", "package", "."}).
+		WithExec(opts.getHelmPkgCmd()).
 		WithExec([]string{"sh", "-c", "ls"}).
 		Sync(ctx)
 
@@ -310,13 +348,29 @@ func (h *Helm) doesChartExistOnRepo(
 	return false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
 }
 
+func (h *Helm) queryChartWithYq(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+	yqQuery string,
+) (string, error) {
+	c := h.createContainer(directory)
+	version, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf(`helm show chart . | yq eval '%s' -`, yqQuery)}).Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(version), nil
+}
+
 func (h *Helm) hasMissingDependencies(
 	// method call context
 	ctx context.Context,
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) bool {
-	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dep list | grep missing"}).Stdout(ctx)
+	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dependency list | grep missing"}).Stdout(ctx)
 	return err == nil
 }
 
@@ -325,7 +379,7 @@ func (h *Helm) dependencyUpdate(
 	directory *dagger.Directory,
 ) *dagger.Directory {
 	c := h.createContainer(directory)
-	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("charts")
+	return c.WithExec([]string{"sh", "-c", "helm dependency update"}).Directory("charts")
 }
 
 func (h *Helm) createContainer(
@@ -337,4 +391,17 @@ func (h *Helm) createContainer(
 		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
+}
+
+// coalesce returns the first non-empty string from the provided arguments.
+func (h *Helm) valueOrQueryChart(
+	theValue string, 
+	ctx context.Context, 
+	directory *dagger.Directory, 
+	yqQuery string,
+) (string, error) {
+	if theValue != "" {
+		return strings.TrimSpace(theValue), nil
+	}
+	return h.queryChartWithYq(ctx, directory, yqQuery)
 }
