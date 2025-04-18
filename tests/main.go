@@ -147,7 +147,7 @@ func (m *Go) HelmPackagePushWithVersion(
 				Helm().
 				PackagePush(ctx, directory, "ttl.sh", "helm", "username",
 							dag.SetSecret("password", "secret"),
-							dagger.HelmPackagePushOpts{Version: differentVersion})
+							dagger.HelmPackagePushOpts{SetVersionTo: differentVersion})
 
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func (m *Go) HelmPackagePushWithAppVersion(
 				Helm().
 				PackagePush(ctx, directory, "ttl.sh", "helm", "username",
 							dag.SetSecret("password", "secret"),
-							dagger.HelmPackagePushOpts{AppVersion: differentAppVersion})
+							dagger.HelmPackagePushOpts{SetAppVersionTo: differentAppVersion})
 
 	if err != nil {
 		return err
