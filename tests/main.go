@@ -106,7 +106,9 @@ func (m *Go) HelmPackagePush(
 ) error {
 	// directory that contains the Helm Chart
 	directory := Mychart.DaggerDirectory()
-	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
+	_, err := dag.
+				Helm().
+				PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
 
 	if err != nil {
 		return err
@@ -121,7 +123,11 @@ func (m *Go) HelmPackagePushNonOci(
 ) error {
 	// directory that contains the Helm Chart
 	directory := Mychart.DaggerDirectory()
-	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{UseNonOciHelmRepo: true})
+	_, err := dag.
+				Helm().
+				PackagePush(ctx, directory, "ttl.sh", "helm", "username",
+							dag.SetSecret("password", "secret"),
+							dagger.HelmPackagePushOpts{UseNonOciHelmRepo: true})
 
 	if err != nil {
 		return err
@@ -137,7 +143,11 @@ func (m *Go) HelmPackagePushWithVersion(
 	// directory that contains the Helm Chart
 	const differentVersion = "0.6.7"
 	directory := Mychart.DaggerDirectory()
-	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{Version: differentVersion})
+	_, err := dag.
+				Helm().
+				PackagePush(ctx, directory, "ttl.sh", "helm", "username",
+							dag.SetSecret("password", "secret"),
+							dagger.HelmPackagePushOpts{Version: differentVersion})
 
 	if err != nil {
 		return err
@@ -166,7 +176,11 @@ func (m *Go) HelmPackagePushWithAppVersion(
 	// directory that contains the Helm Chart
 	const differentAppVersion = "0.9.2"
 	directory := Mychart.DaggerDirectory()
-	_, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"), dagger.HelmPackagePushOpts{AppVersion: differentAppVersion})
+	_, err := dag.
+				Helm().
+				PackagePush(ctx, directory, "ttl.sh", "helm", "username",
+							dag.SetSecret("password", "secret"),
+							dagger.HelmPackagePushOpts{AppVersion: differentAppVersion})
 
 	if err != nil {
 		return err
@@ -197,7 +211,10 @@ func (m *Go) HelmPackagePushWithExistingChart(
 					WithOriginalVersionSuffix(randomString).
 					DaggerDirectory()
 
-	returnValue, err := dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username", dag.SetSecret("password", "secret"))
+	returnValue, err := dag.
+							Helm().
+							PackagePush(ctx, directory, "ttl.sh", "helm", "username",
+										dag.SetSecret("password", "secret"))
 	if err != nil {
 		return err
 	}
@@ -205,7 +222,10 @@ func (m *Go) HelmPackagePushWithExistingChart(
 		return fmt.Errorf("should return true because chart does not exists")
 	}
 
-	returnValue, err = dag.Helm().PackagePush(ctx, directory, "ttl.sh", "helm", "username"+randomString, dag.SetSecret("password", "secret"))
+	returnValue, err = dag.
+						Helm().
+						PackagePush(ctx, directory, "ttl.sh", "helm", "username"+randomString,
+									dag.SetSecret("password", "secret"))
 	if err != nil {
 		return err
 	}
