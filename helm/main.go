@@ -145,6 +145,7 @@ func (h *Helm) PackagePush(
 	// default=""
 	setAppVersionTo string,
 ) (bool, error) {
+	ociRegistryLoginNeeded := true
 	version, err := h.valueOrQueryChart(setVersionTo, ctx, directory, ".version")
 	if err != nil {
 		return false, err
@@ -176,11 +177,6 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	err = h.ociRegistryLoginIfNeeded(ctx, c, &opts)
-	if err != nil {
-		return false, err
-	}
-
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
 	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
@@ -192,13 +188,21 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
-		WithExec(opts.getHelmPkgCmd()).
-		WithExec([]string{"sh", "-c", "ls"}).
-		Sync(ctx)
+	if h.hasMissingDependencies(ctx, c) {
+		c, err = h.setupContainerForDependentCharts(ctx, username, password, useNonOciHelmRepo, c)
+		if err != nil {
+			return false, err
+		}
 
-	if err != nil {
-		return false, err
+		ociRegistryLoginNeeded = false
+		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
+			WithExec(opts.getHelmPkgCmd()).
+			WithExec([]string{"sh", "-c", "ls"}).
+			Sync(ctx)
+
+		if err != nil {
+			return false, err
+		}
 	}
 
 
@@ -219,6 +223,13 @@ func (h *Helm) PackagePush(
 			WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 	} else {
+		if ociRegistryLoginNeeded {
+			err = h.ociRegistryLogin(ctx, c, &opts)
+			if err != nil {
+				return false, err
+			}
+		}
+
 		c, err = c.
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
 			Sync(ctx)
@@ -305,7 +316,7 @@ func (h *Helm) Lint(
 	return out, nil
 }
 
-func (h *Helm) ociRegistryLoginIfNeeded(
+func (h *Helm) ociRegistryLogin(
 	ctx context.Context,
 	c *dagger.Container,
 	opts *PushOpts,
@@ -443,12 +454,12 @@ func (h *Helm) queryChartWithYq(
 	yqQuery string,
 ) (string, error) {
 	c := h.createContainer(directory)
-	version, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf(`helm show chart . | yq eval '%s' -`, yqQuery)}).Stdout(ctx)
+	result, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf(`helm show chart . | yq eval '%s' -`, yqQuery)}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(version), nil
+	return strings.TrimSpace(result), nil
 }
 
 func (h *Helm) hasMissingDependencies(
