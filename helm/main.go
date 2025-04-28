@@ -379,7 +379,7 @@ func (h *Helm) registryLogin(
 		c = c.WithEnvVariable("REPO_NAME", repoHashKey)
 		cmd = []string{
 			"sh", "-c",
-			`echo ${REGISTRY_PASSWORD} | helm repo add ${REPO_NAME} ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`,
+			`(echo ${REGISTRY_PASSWORD} | helm repo add ${REPO_NAME} ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin) ; helm repo update ${REPO_NAME}`,
 		}
 	} else {
 		cmd = []string{
@@ -390,15 +390,8 @@ func (h *Helm) registryLogin(
 
 	c, err := c.
 		WithExec(cmd).
-		Sync(ctx)
-	if err != nil {
-		return err
-	}
-
-	c, err = c.
 		WithoutSecretVariable("REGISTRY_PASSWORD").
 		Sync(ctx)
-
 	if err != nil {
 		return err
 	}
