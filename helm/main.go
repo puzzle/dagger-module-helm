@@ -419,7 +419,7 @@ func (h *Helm) setupContainerForDependentCharts(
 	repoURLs := h.getRepoURLs(valuesString)
 	for _, repoURL := range repoURLs {
 		if repositoriesAreNotEquivalent(alreadyLoggedInto, repoURL) { // avoid logging into the same repo twice
-			h.registryLogin(ctx, repoURL, username, password, useNonOciHelmRepo, c)
+			h.registryLogin(ctx, repoURL, username, password, !useNonOciHelmRepo, c)
 			if err != nil {
 				return c, err
 			}
