@@ -346,7 +346,11 @@ func (h *Helm) Lint(
 	}
 
 	if missingDependencies {
-		c = c.WithMountedDirectory("./charts", h.dependencyUpdate(c))
+		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
+
+		if err != nil {
+			return "", err
+		}
 	}
 
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
