@@ -102,6 +102,10 @@ func (h *Helm) AppVersion(
 // Returns true if the chart was successfully pushed, or false if the chart already exists, with error handling for
 // push failures.
 //
+// If the chart you want to push has dependencies, then we will assume you will be using the same set of credentials
+// given with `--username` and `--password` for each and every dependency in your parent chart and we will automatically
+// log into the registry for each dependency if the registry differs from the `--registry` argument.
+//
 // Example usage:
 //
 //	dagger call package-push \
@@ -297,7 +301,15 @@ func (h *Helm) Test(
 // Use `--args` parameter to pass alternative chart locations or additional options to Helm lint - see
 // https://helm.sh/docs/helm/helm_lint/#options
 //
-// Example usage: dagger call lint --directory ./helm/examples/testdata/mychart/ --args "--quiet"
+// If you need to be able to pull dependent charts but you need to supply credentials for them, then 
+// you can optionally supply the `--username` and `--password` parameters. In this case, this function 
+// will assume you will be using the same set of credentials for each and every dependency in your parent 
+// chart and will automatically log into the registry for each dependency. If you are using non-OCI Helm repositories,
+// you can also specify the `--use-non-oci-helm-repo` parameter to use the legacy Helm repository format.
+//
+// Example usage without supplying credentials:
+//
+// dagger call lint --directory ./helm/examples/testdata/mychart/ --args "--quiet"
 func (h *Helm) Lint(
 	// method call context
 	ctx context.Context,
