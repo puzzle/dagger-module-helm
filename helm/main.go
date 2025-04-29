@@ -235,7 +235,6 @@ func (h *Helm) PackagePush(
 			return false, err
 		}
 
-		abc := c.ID()
 		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
 
 		if err != nil {
@@ -504,7 +503,7 @@ func (h *Helm) doesChartExistOnRepo(
 		Stdout(ctx)
 
 	if err != nil {
-		return false, err
+		return c, false, err
 	}
 
 	httpCode = strings.TrimSpace(httpCode)
