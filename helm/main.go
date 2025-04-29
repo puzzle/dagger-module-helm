@@ -205,7 +205,12 @@ func (h *Helm) PackagePush(
 
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
-	c, err = h.registryLogin(ctx, opts.Registry, opts.Username, opts.Password, opts.Oci, c)
+	if !opts.Oci {
+		c, err = h.registryLogin(ctx, opts.getRepoFqdn(), opts.Username, opts.Password, opts.Oci, c)
+	} else {
+		c, err = h.registryLogin(ctx, opts.Registry, opts.Username, opts.Password, opts.Oci, c)
+	}
+
 	if err != nil {
 		return false, err
 	}
