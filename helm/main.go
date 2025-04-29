@@ -205,7 +205,7 @@ func (h *Helm) PackagePush(
 
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
-	err = h.registryLogin(ctx, opts.Registry, opts.Username, opts.Password, opts.Oci, c)
+	c, err = h.registryLogin(ctx, opts.Registry, opts.Username, opts.Password, opts.Oci, c)
 	if err != nil {
 		return false, err
 	}
@@ -349,9 +349,6 @@ func (h *Helm) Lint(
 		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
 
 		if err != nil {
-			c, err = c.WithExec([]string{"sh", "-c", "helm", "pull", "cdd1cda1/vulcan-annotate-service", `--version "0.0.1-rc.16"` }).Sync(ctx)
-			out, err := c.WithExec([]string{"ls", "-l", "." }).Stdout(ctx)
-			fmt.Fprintf(os.Stdout, "DEBUG Lint output: %s\n", out)
 			return "", err
 		}
 	}
@@ -371,7 +368,7 @@ func (h *Helm) registryLogin(
 	password *dagger.Secret,
 	useOciHelmRepo bool,
 	c *dagger.Container,
-) error {
+) (*dagger.Container, error) {
 	c = c.
 		WithEnvVariable("REGISTRY_USERNAME", username).
 		WithEnvVariable("REGISTRY_URL", registry).
@@ -400,10 +397,10 @@ func (h *Helm) registryLogin(
 		WithoutSecretVariable("REGISTRY_PASSWORD").
 		Sync(ctx)
 	if err != nil {
-		return err
+		return c, err
 	}
 
-	return err
+	return c, nil
 }
 
 func (h *Helm) setupContainerForDependentCharts(
@@ -426,7 +423,7 @@ func (h *Helm) setupContainerForDependentCharts(
 	repoURLs := h.getRepoURLs(valuesString)
 	for _, repoURL := range repoURLs {
 		if repositoriesAreNotEquivalent(alreadyLoggedInto, repoURL) { // avoid logging into the same repo twice
-			h.registryLogin(ctx, repoURL, username, password, !useNonOciHelmRepo, c)
+			c, err = h.registryLogin(ctx, repoURL, username, password, !useNonOciHelmRepo, c)
 			if err != nil {
 				return c, err
 			}
