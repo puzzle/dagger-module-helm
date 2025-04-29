@@ -185,10 +185,11 @@ func (h *Helm) PackagePush(
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
-	c := dag.Container().
-		From("registry.puzzle.ch/cicd/alpine-base:latest").
-		WithDirectory("/helm", directory).
-		WithWorkdir("/helm")
+	c := h.createContainer(directory)
+	//c := dag.Container().
+	//	From("registry.puzzle.ch/cicd/alpine-base:latest").
+	//	WithDirectory("/helm", directory).
+	//	WithWorkdir("/helm")
 
 	name, err := h.Name(ctx, directory)
 	if err != nil {
