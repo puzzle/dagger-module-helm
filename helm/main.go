@@ -216,7 +216,7 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
+	c, chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
 	if err != nil {
 		return false, err
 	}
@@ -399,12 +399,14 @@ func (h *Helm) registryLogin(
 
 	c, err := c.
 		WithExec(cmd).
-		WithoutSecretVariable("REGISTRY_PASSWORD").
 		Sync(ctx)
+
 	if err != nil {
+		c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
 		return c, err
 	}
 
+	c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
 	return c, nil
 }
 
@@ -462,25 +464,25 @@ func (h *Helm) doesChartExistOnRepo(
 	opts *PushOpts,
 	name string,
 	version string,
-) (bool, error) {
+) (*dagger.Container, bool, error) {
 	if opts.Oci {
 		// We assume we are already logged into an OCI registry
 		c, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
 		if err != nil {
-			return false, err
+			return c, false, err
 		}
 
 		exc, err := c.File("/ec").Contents(ctx)
 		if err != nil {
-			return false, err
+			return c, false, err
 		}
 
 		if exc == "0" {
 			//Chart exists
-			return true, nil
+			return c, true, nil
 		} 
 
-		return false, nil
+		return c, false, nil
 	}
 	// else non-OCI
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
@@ -508,14 +510,14 @@ func (h *Helm) doesChartExistOnRepo(
 
 	if httpCode == "200" {
 		// Chart exists
-		return true, nil
+		return c, true, nil
 	}
 
 	if httpCode == "404" {
-		return false, nil
+		return c, false, nil
 	}
 
-	return false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
+	return c, false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
 }
 
 func (h *Helm) queryChartWithYq(
