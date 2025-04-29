@@ -349,7 +349,7 @@ func (h *Helm) Lint(
 		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
 
 		if err != nil {
-			c, err = c.WithExec([]string{"helm", "pull", "cdd1cda1/vulcan-annotate-service", `--version "0.0.1-rc.16"` }).Sync(ctx)
+			c, err = c.WithExec([]string{"sh", "-c", "helm", "pull", "cdd1cda1/vulcan-annotate-service", `--version "0.0.1-rc.16"` }).Sync(ctx)
 			out, err := c.WithExec([]string{"ls", "-l", "." }).Stdout(ctx)
 			fmt.Fprintf(os.Stdout, "DEBUG Lint output: %s\n", out)
 			return "", err
