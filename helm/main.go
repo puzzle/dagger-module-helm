@@ -21,7 +21,7 @@ type Helm struct{}
 type PushOpts struct {
 	Registry   string `yaml:"registry"`
 	Repository string `yaml:"repository"`
-	Oci        bool   `yaml:"oci"`
+	Oci		bool   `yaml:"oci"`
 	Username   string `yaml:"username"`
 	Password   *dagger.Secret
 }
@@ -101,12 +101,12 @@ func (h *Helm) PackagePush(
 	// use a non-OCI (legacy) Helm repository
 	// +optional
 	// +default=false
-	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	useNonOciHelmRepo bool,	// Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
 		Repository: repository,
-		Oci:        !useNonOciHelmRepo,
+		Oci:		!useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
 	}
@@ -155,7 +155,8 @@ func (h *Helm) PackagePush(
 
 	if useNonOciHelmRepo {
 		curlCmd := []string{
-			`curl --variable %REGISTRY_USERNAME`,
+			`curl -f`,
+			`--variable %REGISTRY_USERNAME`,
 			`--variable %REGISTRY_PASSWORD`,
 			`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
 			`-T`,
@@ -277,12 +278,13 @@ func (h *Helm) doesChartExistOnRepo(
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 	// Do a GET of the chart but with response headers only so we do not download the chart
 	curlCmd := []string{
-		`curl --variable %REGISTRY_USERNAME`,
-			 `--variable %REGISTRY_PASSWORD`,
-			 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
-			 opts.getChartFqdn(pkgFile),
-			 `--output /dev/null`,
-			 `--silent -Iw '%{http_code}'`,
+		`curl -f`,
+		`--variable %REGISTRY_USERNAME`,
+		`--variable %REGISTRY_PASSWORD`,
+		`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+		opts.getChartFqdn(pkgFile),
+		`--output /dev/null`,
+		`--silent -Iw '%{http_code}'`,
 	}
 
 	httpCode, err := c.
