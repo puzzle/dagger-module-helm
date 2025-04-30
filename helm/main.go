@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+    "hash/crc32"
+	"bufio"
 )
 
 const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
@@ -19,11 +21,14 @@ const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
 type Helm struct{}
 
 type PushOpts struct {
-	Registry   string `yaml:"registry"`
-	Repository string `yaml:"repository"`
-	Oci        bool   `yaml:"oci"`
-	Username   string `yaml:"username"`
-	Password   *dagger.Secret
+	Registry   		string `yaml:"registry"`
+	Repository 		string `yaml:"repository"`
+	Oci        		bool   `yaml:"oci"`
+	NonOCISubpath	string `yaml:"nonOciSubpath"`
+	Username   		string `yaml:"username"`
+	Password   		*dagger.Secret
+	Version    		string `yaml:"version"`
+	AppVersion		string `yaml:"appVersion"`
 }
 
 func (p PushOpts) getProtocol() string {
@@ -39,7 +44,33 @@ func (p PushOpts) getRepoFqdn() string {
 }
 
 func (p PushOpts) getChartFqdn(name string) string {
+	if !p.Oci && p.NonOCISubpath != "" {
+		return fmt.Sprintf("%s/%s/%s", p.getRepoFqdn(), p.NonOCISubpath, name)
+	}
 	return fmt.Sprintf("%s/%s", p.getRepoFqdn(), name)
+}
+
+func (p PushOpts) getHelmPkgCmd() []string {
+	helmPkgCmd := []string{"helm", "package", "."}
+	if p.Version != "" {
+		helmPkgCmd = append(helmPkgCmd, "--version", p.Version)
+	}
+	if p.AppVersion != "" {
+		helmPkgCmd = append(helmPkgCmd, "--app-version", p.AppVersion)
+	}
+	return helmPkgCmd
+}
+
+// Get and display the name of the Helm Chart located inside the given directory.
+//
+// Example usage: dagger call name --directory ./helm/examples/testdata/mychart/
+func (h *Helm) Name(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (string, error) {
+	return h.queryChartWithYq(ctx, directory, ".name")
 }
 
 // Get and display the version of the Helm Chart located inside the given directory.
@@ -51,18 +82,29 @@ func (h *Helm) Version(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) (string, error) {
-	c := h.createContainer(directory)
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
-	if err != nil {
-		return "", err
-	}
+	return h.queryChartWithYq(ctx, directory, ".version")
+}
 
-	return strings.TrimSpace(version), nil
+// Get and display the appVersion of the Helm Chart located inside the given directory.
+//
+// Example usage: dagger call app-version --directory ./helm/examples/testdata/mychart/
+func (h *Helm) AppVersion(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+) (string, error) {
+	return h.queryChartWithYq(ctx, directory, ".appVersion")
 }
 
 // Packages and pushes a Helm chart to a specified OCI-compatible (by default) registry with authentication.
 //
-// Returns true if the chart was successfully pushed, or false if the chart already exists, with error handling for push failures.
+// Returns true if the chart was successfully pushed, or false if the chart already exists, with error handling for
+// push failures.
+//
+// If the chart you want to push has dependencies, then we will assume you will be using the same set of credentials
+// given with `--username` and `--password` for each and every dependency in your parent chart and we will automatically
+// log into the registry for each dependency if the registry differs from the `--registry` argument.
 //
 // Example usage:
 //
@@ -75,16 +117,26 @@ func (h *Helm) Version(
 //
 // Example usage for pushing to a legacy (non-OCI) Helm repository assuming the repo name is 'helm'. If your target URL
 // requires a vendor-specific path prefix (for example, JFrog Artifactory usually requires 'artifactory' before the repo
-// name) then add it before the repository name. If you want to put the chart in a subpath in
-// the repository, then append that to the end of the repository name.
+// name) then add it before the repository name. If you want to push the chart into a subpath in the repository, then use
+// non-oci-repo-subpath. If the non-oci-repo-subpath option is used, specifying use-non-oci-helm-repo as true is optional.
+//
+// Example usage without a subpath and with a subpath of 'optional/subpath/in/repository':
 //
 //	dagger call package-push \
 //		--registry registry.puzzle.ch \
-//		--repository vendor-specific-prefix/helm/optional/subpath/in/repository \
+//		--repository vendor-specific-prefix/helm \
 //		--username $REGISTRY_HELM_USER \
 //		--password env:REGISTRY_HELM_PASSWORD \
 //		--directory ./examples/testdata/mychart/ \
 //		--use-non-oci-helm-repo=true
+//
+//	dagger call package-push \
+//		--registry registry.puzzle.ch \
+//		--repository vendor-specific-prefix/helm \
+//		--username $REGISTRY_HELM_USER \
+//		--password env:REGISTRY_HELM_PASSWORD \
+//		--directory ./examples/testdata/mychart/ \
+//		--non-oci-repo-subpath optional/subpath/in/repository
 func (h *Helm) PackagePush(
 	// method call context
 	ctx context.Context,
@@ -101,37 +153,72 @@ func (h *Helm) PackagePush(
 	// use a non-OCI (legacy) Helm repository
 	// +optional
 	// +default=false
-	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	useNonOciHelmRepo bool,    // Dev note: We must use default=false due to https://github.com/dagger/dagger/issues/8810
+	// when using a non-OCI Helm repository, optionally specify a subpath location in the repository
+	// +optional
+	// +default=""
+	nonOciRepoSubpath string,
+	// set chart version when packaging
+	// +optional
+	// default=""
+	setVersionTo string,
+	// set chart appVersion when packaging
+	// +optional
+	// default=""
+	setAppVersionTo string,
 ) (bool, error) {
+	if nonOciRepoSubpath != "" {
+		useNonOciHelmRepo = true
+		if nonOciRepoSubpath[0] == '/' {
+			nonOciRepoSubpath = nonOciRepoSubpath[1:]
+		}
+	}
 	opts := PushOpts{
-		Registry:   registry,
-		Repository: repository,
-		Oci:        !useNonOciHelmRepo,
-		Username:   username,
-		Password:   password,
+		Registry:		registry,
+		Repository:		repository,
+		Oci:			!useNonOciHelmRepo,
+		NonOCISubpath:	nonOciRepoSubpath,
+		Username:		username,
+		Password:		password,
+		Version:		setVersionTo,
+		AppVersion:		setAppVersionTo,
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
-	c := dag.Container().
-		From("registry.puzzle.ch/cicd/alpine-base:latest").
-		WithDirectory("/helm", directory).
-		WithWorkdir("/helm")
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
+	c := h.createContainer(directory)
+	//c := dag.Container().
+	//	From("registry.puzzle.ch/cicd/alpine-base:latest").
+	//	WithDirectory("/helm", directory).
+	//	WithWorkdir("/helm")
+
+	name, err := h.Name(ctx, directory)
 	if err != nil {
 		return false, err
 	}
 
-	version = strings.TrimSpace(version)
-
-	name, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.name' -"}).Stdout(ctx)
-	if err != nil {
-		return false, err
+	version := opts.Version
+	if version == "" {
+		version, err = h.Version(ctx, directory)
+		if err != nil {
+			return false, err
+		}
 	}
 
-	name = strings.TrimSpace(name)
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
-	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
+	if !opts.Oci {
+		c, err = h.registryLogin(ctx, opts.getRepoFqdn(), opts.Username, opts.Password, opts.Oci, c)
+	} else {
+		c, err = h.registryLogin(ctx, opts.Registry, opts.Username, opts.Password, opts.Oci, c)
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	_, err = c.Directory("/helm").Sync(ctx)
+
+	c, chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
 	if err != nil {
 		return false, err
 	}
@@ -140,38 +227,46 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
-		WithExec([]string{"helm", "package", "."}).
-		WithExec([]string{"sh", "-c", "ls"}).
-		Sync(ctx)
+	missingDependencies, err := h.hasMissingDependencies(ctx, c)
+	if err != nil {
+		return false, err
+	}
+	if missingDependencies {
+		c, err = h.setupContainerForDependentCharts(ctx, username, password, useNonOciHelmRepo, c, opts.getRepoFqdn())
+		if err != nil {
+			return false, err
+		}
 
+		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
+
+		if err != nil {
+			return false, err
+		}
+	}
+
+	c, err = c.WithExec(opts.getHelmPkgCmd()).Sync(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	c = c.
-		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-		WithSecretVariable("REGISTRY_PASSWORD", opts.Password)
-
 	if useNonOciHelmRepo {
 		curlCmd := []string{
-			`curl --variable %REGISTRY_USERNAME`,
-			`--variable %REGISTRY_PASSWORD`,
-			`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+			`curl`,
+			`-u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}"`,
 			`-T`,
 			pkgFile,
 			opts.getRepoFqdn() + "/",
 		}
 
 		c, err = c.
+			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
+			WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 	} else {
 		c, err = c.
-			WithEnvVariable("REGISTRY_URL", opts.Registry).
-			WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
-			WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 	}
 
@@ -185,7 +280,8 @@ func (h *Helm) PackagePush(
 // Run Helm unittests with the given directory and files.
 //
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
-// Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with the tests.
+// Add the directory location with `"."` as `--args` parameter to tell helm unittest where to find the helm chart with
+// the tests.
 //
 // Example usage: dagger call test --directory ./helm/examples/testdata/mychart/ --args "."
 func (h *Helm) Test(
@@ -197,7 +293,8 @@ func (h *Helm) Test(
 	args []string,
 ) (string, error) {
 	c := h.createContainer(directory)
-	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
+	out, err := c.WithExec([]string{"sh", "-c",
+										fmt.Sprintf("%s %s", "helm-unittest", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -208,9 +305,18 @@ func (h *Helm) Test(
 // Run Helm lint with the given directory.
 //
 // Provide the helm chart directory with pointing to it with the `--directory` flag.
-// Use `--args` parameter to pass alternative chart locations or additional options to Helm lint - see https://helm.sh/docs/helm/helm_lint/#options
+// Use `--args` parameter to pass alternative chart locations or additional options to Helm lint - see
+// https://helm.sh/docs/helm/helm_lint/#options
 //
-// Example usage: dagger call lint --directory ./helm/examples/testdata/mychart/ --args "--quiet"
+// If you need to be able to pull dependent charts but you need to supply credentials for them, then 
+// you can optionally supply the `--username` and `--password` parameters. In this case, this function 
+// will assume you will be using the same set of credentials for each and every dependency in your parent 
+// chart and will automatically log into the registry for each dependency. If you are using non-OCI Helm repositories,
+// you can also specify the `--use-non-oci-helm-repo` parameter to use the legacy Helm repository format.
+//
+// Example usage without supplying credentials:
+//
+// dagger call lint --directory ./helm/examples/testdata/mychart/ --args "--quiet"
 func (h *Helm) Lint(
 	// method call context
 	ctx context.Context,
@@ -219,13 +325,39 @@ func (h *Helm) Lint(
 	// Helm lint arguments
 	// +optional
 	args []string,
+	// supplemental credentials for dependent charts - username
+	// +optional
+	username string,
+	// supplemental credentials for dependent charts - password
+	// +optional
+	password *dagger.Secret,
+	// use a non-OCI (legacy) Helm repository when pulling dependent charts
+	// +optional
+	// +default=false
+	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
 ) (string, error) {
 	var c *dagger.Container
+	var err error
 
-	if h.hasMissingDependencies(ctx, directory) {
-		c = h.createContainer(directory).WithMountedDirectory("./charts", h.dependencyUpdate(directory))
-	} else {
-		c = h.createContainer(directory)
+	c = h.createContainer(directory)
+	if username != "" { // setup credentials for dependent charts
+		c, err = h.setupContainerForDependentCharts(ctx, username, password, useNonOciHelmRepo, c, "")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	missingDependencies, err := h.hasMissingDependencies(ctx, c)
+	if err != nil {
+		return "", err
+	}
+
+	if missingDependencies {
+		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
+
+		if err != nil {
+			return "", err
+		}
 	}
 
 	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
@@ -236,50 +368,130 @@ func (h *Helm) Lint(
 	return out, nil
 }
 
+func (h *Helm) registryLogin(
+	ctx context.Context,
+	registry string,
+	username string,
+	password *dagger.Secret,
+	useOciHelmRepo bool,
+	c *dagger.Container,
+) (*dagger.Container, error) {
+	c = c.
+		WithEnvVariable("REGISTRY_USERNAME", username).
+		WithEnvVariable("REGISTRY_URL", registry).
+		WithSecretVariable("REGISTRY_PASSWORD", password)
+
+	var cmd []string
+	if !useOciHelmRepo {
+		// The hash of registry is used as a repository name when setting up non-OCI.
+		// The repo name can be anything since we only login to resolve dependencies.
+		hash := crc32.ChecksumIEEE([]byte(registry))
+		repoHashKey := fmt.Sprintf("%x", hash)
+		c = c.WithEnvVariable("REPO_NAME", repoHashKey)
+		cmd = []string{
+			"sh", "-c",
+			`(echo ${REGISTRY_PASSWORD} | helm repo add ${REPO_NAME} ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin --pass-credentials) ; helm repo update`,
+		}
+	} else {
+		cmd = []string{
+			"sh", "-c", 
+			`echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`,
+		}
+	}
+
+	c, err := c.
+		WithExec(cmd).
+		Sync(ctx)
+
+	if err != nil {
+		c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
+		return c, err
+	}
+
+	c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
+	return c, nil
+}
+
+func (h *Helm) setupContainerForDependentCharts(
+	ctx context.Context,
+	username string,
+	password *dagger.Secret,
+	useNonOciHelmRepo bool,
+	c *dagger.Container,
+	alreadyLoggedInto string,
+) (*dagger.Container, error) {
+	c = c.
+		WithEnvVariable("REGISTRY_USERNAME", username).
+		WithSecretVariable("REGISTRY_PASSWORD", password)
+
+	valuesString, err := c.WithExec([]string{"sh", "-c", `helm show chart . | yq '[.dependencies[].repository] | unique | sort | .[]'`}).Stdout(ctx)
+	if err != nil {
+		return c, err
+	}
+
+	repoURLs := h.getRepoURLs(valuesString)
+	for _, repoURL := range repoURLs {
+		if repositoriesAreNotEquivalent(alreadyLoggedInto, repoURL) { // avoid logging into the same repo twice
+			c, err = h.registryLogin(ctx, repoURL, username, password, !useNonOciHelmRepo, c)
+			if err != nil {
+				return c, err
+			}
+		}
+	}
+
+	return c, nil
+}
+
+func repositoriesAreNotEquivalent(
+	repositoryOne string,
+	repositoryTwo string,
+) bool {
+	if repositoryOne == "" {
+		return true
+	}
+	normalize := func(input string) string {
+		result := strings.TrimSpace(input)
+		result = result[:strings.Index(result, "://")]
+		result = strings.ToLower(result)
+		return result
+	}
+	return !strings.Contains(normalize(repositoryOne), normalize(repositoryTwo))
+}
+
+
+
 func (h *Helm) doesChartExistOnRepo(
 	ctx context.Context,
 	c *dagger.Container,
 	opts *PushOpts,
 	name string,
 	version string,
-) (bool, error) {
+) (*dagger.Container, bool, error) {
 	if opts.Oci {
-		c, err := c.
-			WithEnvVariable("REGISTRY_URL", opts.Registry).
-			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
-			WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
-			WithoutSecretVariable("REGISTRY_PASSWORD").
-			Sync(ctx)
+		// We assume we are already logged into an OCI registry
+		c, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
 		if err != nil {
-			return false, err
-		}
-
-		//TODO: Refactor with return
-		c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
-		if err != nil {
-			return false, err
+			return c, false, err
 		}
 
 		exc, err := c.File("/ec").Contents(ctx)
 		if err != nil {
-			return false, err
+			return c, false, err
 		}
 
 		if exc == "0" {
 			//Chart exists
-			return true, nil
+			return c, true, nil
 		} 
 
-		return false, nil
+		return c, false, nil
 	}
 	// else non-OCI
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 	// Do a GET of the chart but with response headers only so we do not download the chart
 	curlCmd := []string{
-		`curl --variable %REGISTRY_USERNAME`,
-			 `--variable %REGISTRY_PASSWORD`,
-			 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+		`curl`,
+			 `-u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}"`,
 			 opts.getChartFqdn(pkgFile),
 			 `--output /dev/null`,
 			 `--silent -Iw '%{http_code}'`,
@@ -293,39 +505,53 @@ func (h *Helm) doesChartExistOnRepo(
 		Stdout(ctx)
 
 	if err != nil {
-		return false, err
+		return c, false, err
 	}
 
 	httpCode = strings.TrimSpace(httpCode)
 
 	if httpCode == "200" {
 		// Chart exists
-		return true, nil
+		return c, true, nil
 	}
 
 	if httpCode == "404" {
-		return false, nil
+		return c, false, nil
 	}
 
-	return false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
+	return c, false, fmt.Errorf("Server returned error code %s checking for chart existence on server.", httpCode)
+}
+
+func (h *Helm) queryChartWithYq(
+	// method call context
+	ctx context.Context,
+	// directory that contains the Helm Chart
+	directory *dagger.Directory,
+	yqQuery string,
+) (string, error) {
+	c := h.createContainer(directory)
+	result, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf(`helm show chart . | yq eval '%s' -`, yqQuery)}).Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(result), nil
 }
 
 func (h *Helm) hasMissingDependencies(
 	// method call context
 	ctx context.Context,
-	// directory that contains the Helm Chart
-	directory *dagger.Directory,
-) bool {
-	_, err := h.createContainer(directory).WithExec([]string{"sh", "-c", "helm dep list | grep missing"}).Stdout(ctx)
-	return err == nil
-}
-
-func (h *Helm) dependencyUpdate(
-	// directory that contains the Helm Chart
-	directory *dagger.Directory,
-) *dagger.Directory {
-	c := h.createContainer(directory)
-	return c.WithExec([]string{"sh", "-c", "helm dep update"}).Directory("charts")
+	// container to run the command in
+	c *dagger.Container,
+) (bool, error) {
+	output, err := c.WithExec([]string{"sh", "-c", "helm dependency list"}).Stdout(ctx)
+	if err != nil {
+		return false, err
+	}
+	if strings.Contains(output, "missing") {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (h *Helm) createContainer(
@@ -337,4 +563,17 @@ func (h *Helm) createContainer(
 		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
+}
+
+// getRepoURLs returns a list of the repository URLs from the values string.
+func (h *Helm) getRepoURLs(
+	valuesString string,
+) []string {
+	resultList := []string{}
+
+    valScanner := bufio.NewScanner(strings.NewReader(valuesString))
+    for valScanner.Scan() {
+		resultList = append(resultList, valScanner.Text())
+    }
+    return resultList
 }
