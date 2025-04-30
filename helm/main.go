@@ -216,6 +216,8 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
+	_, err = c.Directory("/helm").Sync(ctx)
+
 	c, chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
 	if err != nil {
 		return false, err
@@ -550,13 +552,6 @@ func (h *Helm) hasMissingDependencies(
 		return true, nil
 	}
 	return false, nil
-}
-
-func (h *Helm) dependencyUpdate(
-	// directory that contains the Helm Chart
-	c *dagger.Container,
-) *dagger.Directory {
-	return c.WithExec([]string{"sh", "-c", "helm dependency update"}).Directory("charts")
 }
 
 func (h *Helm) createContainer(
