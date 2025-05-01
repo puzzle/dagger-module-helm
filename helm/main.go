@@ -35,7 +35,7 @@ func (p PushOpts) getProtocol() string {
 }
 
 func (p PushOpts) getRepoFqdn() string {
-	return fmt.Sprintf("%s://%s/%s", p.getProtocol(),  p.Registry, p.Repository)
+	return fmt.Sprintf("%s://%s/%s", p.getProtocol(), p.Registry, p.Repository)
 }
 
 func (p PushOpts) getChartFqdn(name string) string {
@@ -270,7 +270,7 @@ func (h *Helm) doesChartExistOnRepo(
 		if exc == "0" {
 			//Chart exists
 			return true, nil
-		} 
+		}
 
 		return false, nil
 	}

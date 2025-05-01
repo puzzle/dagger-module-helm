@@ -1,6 +1,6 @@
 // Go examples for the Helm module.
 //
-// This module defines the examples for the Daggerverse.	
+// This module defines the examples for the Daggerverse.
 
 package main
 
@@ -10,7 +10,6 @@ import (
 )
 
 type Examples struct{}
-
 
 // Example on how to call the PackagePush method.
 // Packages and pushes a Helm chart to a specified OCI-compatible registry with authentication.
@@ -31,8 +30,8 @@ func (h *Examples) HelmPackagepush(
 	password *dagger.Secret,
 ) (bool, error) {
 	return dag.
-			Helm().
-			PackagePush(ctx, directory, registry, repository, username, password)
+		Helm().
+		PackagePush(ctx, directory, registry, repository, username, password)
 }
 
 // Example on how to call the Lint method.
@@ -46,13 +45,13 @@ func (h *Examples) HelmLint(
 	ctx context.Context,
 	// directory that contains the Helm Chart, e.g. "./helm/examples/testdata/mychart/"
 	directory *dagger.Directory,
-    // Helm lint arguments
-    // +optional
+	// Helm lint arguments
+	// +optional
 	args []string,
 ) (string, error) {
 	return dag.
-			Helm().
-			Lint(ctx, directory)
+		Helm().
+		Lint(ctx, directory)
 }
 
 // Example on how to call the Test method.
@@ -70,12 +69,12 @@ func (h *Examples) HelmTest(
 	args []string,
 ) (string, error) {
 	return dag.
-			Helm().
-			Test(ctx, directory, args)
+		Helm().
+		Test(ctx, directory, args)
 }
 
 // Example on how to call the Version method.
-// 
+//
 // Get and display the version of the Helm Chart located inside the directory referenced by the directory parameter.
 //
 // Return: The Helm Chart version as string.
@@ -86,6 +85,6 @@ func (m *Examples) HelmVersion(
 	chart *dagger.Directory,
 ) (string, error) {
 	return dag.
-			Helm().
-			Version(ctx, chart)
+		Helm().
+		Version(ctx, chart)
 }

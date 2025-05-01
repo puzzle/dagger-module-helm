@@ -15,7 +15,7 @@ type Ci struct{}
 // Build helm image used in the helm module.
 func (m *Ci) Build(
 	ctx context.Context,
-) (*dagger.Container) {
+) *dagger.Container {
 
 	// location of source directory
 	src := dag.CurrentModule().Source().Directory(".")
