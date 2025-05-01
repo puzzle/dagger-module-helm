@@ -35,7 +35,7 @@ func (p PushOpts) getProtocol() string {
 }
 
 func (p PushOpts) getRepoFqdn() string {
-	return fmt.Sprintf("%s://%s/%s", p.getProtocol(),  p.Registry, p.Repository)
+	return fmt.Sprintf("%s://%s/%s", p.getProtocol(), p.Registry, p.Repository)
 }
 
 func (p PushOpts) getChartFqdn(name string) string {
@@ -101,7 +101,7 @@ func (h *Helm) PackagePush(
 	// use a non-OCI (legacy) Helm repository
 	// +optional
 	// +default=false
-	useNonOciHelmRepo bool,    // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	useNonOciHelmRepo bool, // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
@@ -269,7 +269,7 @@ func (h *Helm) doesChartExistOnRepo(
 		if exc == "0" {
 			//Chart exists
 			return true, nil
-		} 
+		}
 
 		return false, nil
 	}
@@ -278,11 +278,11 @@ func (h *Helm) doesChartExistOnRepo(
 	// Do a GET of the chart but with response headers only so we do not download the chart
 	curlCmd := []string{
 		`curl --variable %REGISTRY_USERNAME`,
-			 `--variable %REGISTRY_PASSWORD`,
-			 `--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
-			 opts.getChartFqdn(pkgFile),
-			 `--output /dev/null`,
-			 `--silent -Iw '%{http_code}'`,
+		`--variable %REGISTRY_PASSWORD`,
+		`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
+		opts.getChartFqdn(pkgFile),
+		`--output /dev/null`,
+		`--silent -Iw '%{http_code}'`,
 	}
 
 	httpCode, err := c.

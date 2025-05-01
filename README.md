@@ -1,20 +1,20 @@
-# daggerverse Helm Module
+# Daggerverse Helm Module
 
 [Dagger](https://dagger.io/) module for [daggerverse](https://daggerverse.dev/) providing [Helm](https://helm.sh/) functionality.
 
 The Dagger module is located in the [helm](./helm/) directory.
 
-## usage
+## Usage
 
 Basic usage guide.
 
 The [helm](./helm/) directory contains a [daggerverse](https://daggerverse.dev/) [Dagger](https://dagger.io/) module.
 
-Check the official Dagger Module documentation: https://docs.dagger.io/zenith/
+Check the official Dagger Module documentation: https://docs.dagger.io/api/module-structure
 
 The [Dagger CLI](https://docs.dagger.io/cli) is needed.
 
-### functions
+### Functions
 
 List all functions of the module. This command is provided by the [Dagger CLI](https://docs.dagger.io/cli). 
 
@@ -22,28 +22,19 @@ List all functions of the module. This command is provided by the [Dagger CLI](h
 dagger functions -m ./helm/
 ```
 
-The helm module is referenced locally.
-
-See the module [readme](./helm/README.md) or the method comments for more details.
-
-## development
+## Development
 
 Basic development guide.
 
-### setup Dagger module
-
-Setup the Dagger module.
-
-Create the directory for the module and initialize it.
+### Setup/update Dagger module
 
 ```bash
-mkdir helm/
-cd helm/
-
-# initialize Dagger module
-dagger init
-dagger develop --sdk go --source helm
+dagger -m ./helm/ develop
 ```
+
+## Contributors
+
+Please add `gofmt -s -w .` to your `.git/hooks/pre-commit` hook.
 
 ## To Do
 
@@ -51,4 +42,3 @@ dagger develop --sdk go --source helm
 - [ ] Add cache mounts
 - [ ] Add environment variables
 - [ ] Add more examples
-- [ ] Add tests
