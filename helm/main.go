@@ -21,7 +21,7 @@ type Helm struct{}
 type PushOpts struct {
 	Registry   string `yaml:"registry"`
 	Repository string `yaml:"repository"`
-	Oci		bool   `yaml:"oci"`
+	Oci        bool   `yaml:"oci"`
 	Username   string `yaml:"username"`
 	Password   *dagger.Secret
 }
@@ -101,12 +101,12 @@ func (h *Helm) PackagePush(
 	// use a non-OCI (legacy) Helm repository
 	// +optional
 	// +default=false
-	useNonOciHelmRepo bool,	// Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
+	useNonOciHelmRepo bool, // Dev note: We are forced to use default=false due to https://github.com/dagger/dagger/issues/8810
 ) (bool, error) {
 	opts := PushOpts{
 		Registry:   registry,
 		Repository: repository,
-		Oci:		!useNonOciHelmRepo,
+		Oci:        !useNonOciHelmRepo,
 		Username:   username,
 		Password:   password,
 	}
