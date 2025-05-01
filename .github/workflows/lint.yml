@@ -1,18 +1,10 @@
 name: Lint
 
 on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
-  push:
-    branches:
-      - lint
-  # Replace pull_request with pull_request_target if you
-  # plan to use this action with forks, see the Limitations section
   pull_request:
     branches:
       - main
 
-# Down scope as necessary via https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
 permissions:
   checks: write
   contents: write
@@ -26,7 +18,6 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v4
 
-      # Install your linters here
       - name: Install Go
         run: sudo apt-get install -y golang-go
 
