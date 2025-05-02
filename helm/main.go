@@ -216,7 +216,7 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -236,11 +236,11 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
 	if err != nil {
 		return false, err
 	}
-	ret_string, err := c.Stdout(ctx)
+	ret_string, err = c.Stdout(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -367,7 +367,7 @@ func (h *Helm) Lint(
 		}
 	}
 
-	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -383,11 +383,11 @@ func (h *Helm) Lint(
 		return "", err
 	}
 
-	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
 	if err != nil {
 		return "", err
 	}
-	ret_string, err := c.Stdout(ctx)
+	ret_string, err = c.Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -474,7 +474,7 @@ func (h *Helm) setupContainerForDependentCharts(
 		return c, err
 	}
 
-	valuesString, _ := c.Stdout(ctx)
+	valuesString, err := c.Stdout(ctx)
 	if err != nil {
 		return c, err
 	}
