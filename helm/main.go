@@ -216,7 +216,9 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	_, err = c.Directory("/helm").Sync(ctx)
+	ret_string, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Stdout(ctx)
+	
+	fmt.Fprintf(os.Stdout, "DEBUG1:\n%s\n", ret_string)
 
 	c, chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
 	if err != nil {
@@ -226,6 +228,10 @@ func (h *Helm) PackagePush(
 	if chartExists {
 		return false, nil
 	}
+
+	ret_string, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Stdout(ctx)
+	
+	fmt.Fprintf(os.Stdout, "DEBUG2:\n%s\n", ret_string)
 
 	missingDependencies, err := h.hasMissingDependencies(ctx, c)
 	if err != nil {
@@ -390,7 +396,7 @@ func (h *Helm) registryLogin(
 		c = c.WithEnvVariable("REPO_NAME", repoHashKey)
 		cmd = []string{
 			"sh", "-c",
-			`(echo ${REGISTRY_PASSWORD} | helm repo add ${REPO_NAME} ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin --pass-credentials) ; helm repo update`,
+			`(echo ${REGISTRY_PASSWORD} | helm repo add ${REPO_NAME} ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin --pass-credentials) ; helm repo update ; helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml`,
 		}
 	} else {
 		cmd = []string{
@@ -399,9 +405,11 @@ func (h *Helm) registryLogin(
 		}
 	}
 
-	c, err := c.
+	ret_str, err := c.
 		WithExec(cmd).
-		Sync(ctx)
+		Stdout(ctx)
+
+	fmt.Fprintf(os.Stdout, "DEBUG0:\n%s\n", ret_str)
 
 	if err != nil {
 		c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
