@@ -216,7 +216,14 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	ret_string, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Stdout(ctx)
+	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	if err != nil {
+		return false, err
+	}
+	ret_string, err := c.Stdout(ctx)
+	if err != nil {
+		return false, err
+	}
 	
 	fmt.Fprintf(os.Stdout, "DEBUG1:\n%s\n", ret_string)
 
@@ -229,7 +236,14 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	ret_string, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Stdout(ctx)
+	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	if err != nil {
+		return false, err
+	}
+	ret_string, err := c.Stdout(ctx)
+	if err != nil {
+		return false, err
+	}
 	
 	fmt.Fprintf(os.Stdout, "DEBUG2:\n%s\n", ret_string)
 
@@ -353,10 +367,32 @@ func (h *Helm) Lint(
 		}
 	}
 
+	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	if err != nil {
+		return "", err
+	}
+	ret_string, err := c.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	
+	fmt.Fprintf(os.Stdout, "DEBUGL1:\n%s\n", ret_string)
+
 	missingDependencies, err := h.hasMissingDependencies(ctx, c)
 	if err != nil {
 		return "", err
 	}
+
+	c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+	if err != nil {
+		return "", err
+	}
+	ret_string, err := c.Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+	
+	fmt.Fprintf(os.Stdout, "DEBUGL2:\n%s\n", ret_string)
 
 	if missingDependencies {
 		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
@@ -405,10 +441,11 @@ func (h *Helm) registryLogin(
 		}
 	}
 
-	ret_str, err := c.
+	c, err := c.
 		WithExec(cmd).
-		Stdout(ctx)
+		Sync(ctx)
 
+	ret_str, _ := c.Stdout(ctx)
 	fmt.Fprintf(os.Stdout, "DEBUG0:\n%s\n", ret_str)
 
 	if err != nil {
@@ -432,7 +469,12 @@ func (h *Helm) setupContainerForDependentCharts(
 		WithEnvVariable("REGISTRY_USERNAME", username).
 		WithSecretVariable("REGISTRY_PASSWORD", password)
 
-	valuesString, err := c.WithExec([]string{"sh", "-c", `helm show chart . | yq '[.dependencies[].repository] | unique | sort | .[]'`}).Stdout(ctx)
+	c, err := c.WithExec([]string{"sh", "-c", `helm show chart . | yq '[.dependencies[].repository] | unique | sort | .[]'`}).Sync(ctx)
+	if err != nil {
+		return c, err
+	}
+
+	valuesString, _ := c.Stdout(ctx)
 	if err != nil {
 		return c, err
 	}
@@ -444,6 +486,14 @@ func (h *Helm) setupContainerForDependentCharts(
 			if err != nil {
 				return c, err
 			}
+			c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
+			if err != nil {
+				return c, err
+			}
+			
+			ret_str, _ := c.Stdout(ctx)
+			fmt.Fprintf(os.Stdout, "DEBUG1:\n%s\n", ret_str)
+
 		}
 	}
 
