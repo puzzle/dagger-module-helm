@@ -449,12 +449,14 @@ func (h *Helm) registryLogin(
 	fmt.Fprintf(os.Stdout, "DEBUG0:\n%s\n", ret_str)
 
 	if err != nil {
-		c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
-		return c, err
+		return c.With(func(r *dagger.Container) *dagger.Container {
+			return r.WithoutSecretVariable("REGISTRY_PASSWORD")
+		}), err
 	}
 
-	c = c.WithoutSecretVariable("REGISTRY_PASSWORD")
-	return c, nil
+	return c.With(func(r *dagger.Container) *dagger.Container {
+		return r.WithoutSecretVariable("REGISTRY_PASSWORD")
+	}), nil
 }
 
 func (h *Helm) setupContainerForDependentCharts(
