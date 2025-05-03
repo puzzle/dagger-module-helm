@@ -20,7 +20,7 @@ import (
 const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
 
 var InvalidatedCache dagger.WithContainerFunc = func(c *dagger.Container) *dagger.Container {
-	return c.WithEnvVariable("CACHEBUSTER", time.Now().String()).WithExec([]string{"date ; echo $CACHEBUSTER"})
+	return c.WithEnvVariable("CACHEBUSTER", time.Now().String()).WithExec([]string{"echo $CACHEBUSTER"})
 }
 
 type Helm struct{}
