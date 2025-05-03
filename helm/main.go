@@ -19,6 +19,10 @@ import (
 
 const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
 
+var InvalidatedCache dagger.WithContainerFunc = func(c *dagger.Container) *dagger.Container {
+	return c.WithEnvVariable("CACHEBUSTER", time.Now().String()).WithExec([]string{"date ; echo $CACHEBUSTER"})
+}
+
 type Helm struct{}
 
 type PushOpts struct {
@@ -217,16 +221,7 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
-	if err != nil {
-		return false, err
-	}
-	ret_string, err := c.Stdout(ctx)
-	if err != nil {
-		return false, err
-	}
-	
-	fmt.Fprintf(os.Stdout, "DEBUG1:\n%s\n", ret_string)
+	c = h.debugEnv(c, ctx, "in packagepush after registryLogin")
 
 	c, chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
 	if err != nil {
@@ -237,16 +232,7 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
-	if err != nil {
-		return false, err
-	}
-	ret_string, err = c.Stdout(ctx)
-	if err != nil {
-		return false, err
-	}
-	
-	fmt.Fprintf(os.Stdout, "DEBUG2:\n%s\n", ret_string)
+	c = h.debugEnv(c, ctx, "in packagepush after doesChartExistOnRepo")
 
 	missingDependencies, err := h.hasMissingDependencies(ctx, c)
 	if err != nil {
@@ -258,14 +244,14 @@ func (h *Helm) PackagePush(
 			return false, err
 		}
 
-		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
+		c, err = c.With(InvalidatedCache).WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
 
 		if err != nil {
 			return false, err
 		}
 	}
 
-	c, err = c.WithExec(opts.getHelmPkgCmd()).Sync(ctx)
+	c, err = c.With(InvalidatedCache).WithExec(opts.getHelmPkgCmd()).Sync(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -282,11 +268,13 @@ func (h *Helm) PackagePush(
 		c, err = c.
 			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
 			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
+			With(InvalidatedCache).
 			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
 			WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 	} else {
 		c, err = c.
+			With(InvalidatedCache).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
 			Sync(ctx)
 	}
@@ -368,42 +356,22 @@ func (h *Helm) Lint(
 		}
 	}
 
-	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
-	if err != nil {
-		return "", err
-	}
-	ret_string, err := c.Stdout(ctx)
-	if err != nil {
-		return "", err
-	}
-	
-	fmt.Fprintf(os.Stdout, "DEBUGL1:\n%s\n", ret_string)
+	c = h.debugEnv(c, ctx, "before hasMissingDependencies")
 
 	missingDependencies, err := h.hasMissingDependencies(ctx, c)
 	if err != nil {
 		return "", err
 	}
 
-	c, err = c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
-	if err != nil {
-		return "", err
-	}
-	ret_string, err = c.Stdout(ctx)
-	if err != nil {
-		return "", err
-	}
-	
-	fmt.Fprintf(os.Stdout, "DEBUGL2:\n%s\n", ret_string)
-
 	if missingDependencies {
-		c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
+		c, err = c.With(InvalidatedCache).WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
 
 		if err != nil {
 			return "", err
 		}
 	}
 
-	out, err := c.WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
+	out, err := c.With(InvalidatedCache).WithExec([]string{"sh", "-c", fmt.Sprintf("%s %s", "helm lint", strings.Join(args, " "))}).Stdout(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -422,7 +390,6 @@ func (h *Helm) registryLogin(
 	c = c.
 		WithEnvVariable("REGISTRY_USERNAME", username).
 		WithEnvVariable("REGISTRY_URL", registry).
-		WithEnvVariable("CACHEBUSTER", time.Now().String()).    // be sure dagger cache is invalidated to properly maintain state
 		WithSecretVariable("REGISTRY_PASSWORD", password)
 
 	var cmd []string
@@ -443,22 +410,29 @@ func (h *Helm) registryLogin(
 		}
 	}
 
-	c, err := c.
+	c, _ = c.
+		With(InvalidatedCache).
 		WithExec(cmd).
 		Sync(ctx)
 
-	ret_str, _ := c.Stdout(ctx)
-	fmt.Fprintf(os.Stdout, "DEBUG0:\n%s\n", ret_str)
+	c = h.debugEnv(c, ctx, "immediately after registryLogin")
 
+	return c, nil
+}
+
+func (h *Helm) debugEnv(
+	c *dagger.Container,
+	ctx context.Context,
+	label string,
+) *dagger.Container {
+	c, err := c.With(InvalidatedCache).WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
 	if err != nil {
-		return c.With(func(r *dagger.Container) *dagger.Container {
-			return r.WithoutSecretVariable("REGISTRY_PASSWORD")
-		}), err
+		return c
 	}
-
-	return c.With(func(r *dagger.Container) *dagger.Container {
-		return r.WithoutSecretVariable("REGISTRY_PASSWORD")
-	}), nil
+	
+	ret_str, _ := c.Stdout(ctx)
+	fmt.Fprintf(os.Stdout, "DEBUG(%s):\n%s\n", label, ret_str)
+	return c
 }
 
 func (h *Helm) setupContainerForDependentCharts(
@@ -490,14 +464,7 @@ func (h *Helm) setupContainerForDependentCharts(
 			if err != nil {
 				return c, err
 			}
-			c, err := c.WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
-			if err != nil {
-				return c, err
-			}
-			
-			ret_str, _ := c.Stdout(ctx)
-			fmt.Fprintf(os.Stdout, "DEBUG1:\n%s\n", ret_str)
-
+			c = h.debugEnv(c, ctx, "in setupContainerForDependentCharts after registryLogin")
 		}
 	}
 
@@ -606,7 +573,7 @@ func (h *Helm) hasMissingDependencies(
 	// container to run the command in
 	c *dagger.Container,
 ) (bool, error) {
-	output, err := c.WithExec([]string{"sh", "-c", "helm dependency list"}).Stdout(ctx)
+	output, err := c.With(InvalidatedCache).WithExec([]string{"sh", "-c", "helm dependency list"}).Stdout(ctx)
 	if err != nil {
 		return false, err
 	}
