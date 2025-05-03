@@ -14,6 +14,7 @@ import (
 	"strings"
     "hash/crc32"
 	"bufio"
+	"time"
 )
 
 const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
@@ -421,6 +422,7 @@ func (h *Helm) registryLogin(
 	c = c.
 		WithEnvVariable("REGISTRY_USERNAME", username).
 		WithEnvVariable("REGISTRY_URL", registry).
+		WithEnvVariable("CACHEBUSTER", time.Now().String()).    // be sure dagger cache is invalidated to properly maintain state
 		WithSecretVariable("REGISTRY_PASSWORD", password)
 
 	var cmd []string
