@@ -246,14 +246,25 @@ func (h *Helm) PackagePush(
 			return false, err
 		}
 
-		c, err = c.With(InvalidatedCache).WithExec([]string{"helm", "dependency", "update", "."}).Sync(ctx)
+		c, err = c.
+			With(InvalidatedCache).
+			With(h.reuseDirectoryChanges).
+			WithExec([]string{"helm", "dependency", "update", "."}).
+			With(h.retainDirectoryChanges).
+			Sync(ctx)
 
 		if err != nil {
 			return false, err
 		}
 	}
 
-	c, err = c.With(InvalidatedCache).WithExec(opts.getHelmPkgCmd()).Sync(ctx)
+	c, err = c.
+		With(InvalidatedCache).
+		With(h.reuseDirectoryChanges).
+		WithExec(opts.getHelmPkgCmd()).
+		With(h.retainDirectoryChanges).
+		Sync(ctx)
+
 	if err != nil {
 		return false, err
 	}
@@ -271,12 +282,14 @@ func (h *Helm) PackagePush(
 			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
 			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			With(InvalidatedCache).
+			With(h.reuseDirectoryChanges).
 			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
 			WithoutSecretVariable("REGISTRY_PASSWORD").
 			Sync(ctx)
 	} else {
 		c, err = c.
 			With(InvalidatedCache).
+			With(h.reuseDirectoryChanges).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
 			Sync(ctx)
 	}
@@ -588,10 +601,17 @@ func (h *Helm) hasMissingDependencies(
 func (h *Helm) retainDirectoryChanges(
 	c *dagger.Container,
 ) *dagger.Container {
-	dir := c.Directory("/helm")
+	h.Directory = c.Directory("/helm")
+	return c.With(h.reuseDirectoryChanges)
+}
+
+// Must be called right after WithExec. Sets up the container to reuse directory changes.
+func (h *Helm) reuseDirectoryChanges(
+	c *dagger.Container,
+) *dagger.Container {
 	return c.
 		WithoutDirectory("/helm").
-		WithDirectory("/helm", dir, dagger.ContainerWithDirectoryOpts{Owner: "1001"})
+		WithDirectory("/helm", h.Directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"})
 }
 	
 func (h *Helm) createContainer(
