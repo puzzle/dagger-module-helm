@@ -23,7 +23,9 @@ var InvalidatedCache dagger.WithContainerFunc = func(c *dagger.Container) *dagge
 	return c.WithEnvVariable("CACHEBUSTER", time.Now().String())
 }
 
-type Helm struct{}
+type Helm struct{
+	Directory *dagger.Directory
+}
 
 type PushOpts struct {
 	Registry   		string `yaml:"registry"`
@@ -410,12 +412,15 @@ func (h *Helm) registryLogin(
 		}
 	}
 
+	c = h.debugEnv(c, ctx, "in registryLogin before repo add")
+
 	c, _ = c.
 		With(InvalidatedCache).
 		WithExec(cmd).
 		Sync(ctx)
 
-	c = h.debugEnv(c, ctx, "immediately after registryLogin")
+
+	c = h.debugEnv(c, ctx, "in registryLogin after repo add")
 
 	return c, nil
 }
@@ -425,13 +430,14 @@ func (h *Helm) debugEnv(
 	ctx context.Context,
 	label string,
 ) *dagger.Container {
-	c, err := c.With(InvalidatedCache).WithExec([]string{"helm repo list ; cat Chart.yaml ; cat /helm/.config/helm/repositories.yaml"}).Sync(ctx)
-	if err != nil {
-		return c
-	}
+	//c, err := c.With(InvalidatedCache).WithExec([]string{"sh", "-c", `cat /helm/.config/helm/repositories.yaml`}).Sync(ctx)
+	//if err != nil {
+	//	return c
+	//}
 	
-	ret_str, _ := c.Stdout(ctx)
-	fmt.Fprintf(os.Stdout, "DEBUG(%s):\n%s\n", label, ret_str)
+	//ret_str, _ := c.Stdout(ctx)
+	digest_str, _ := h.Directory.Digest(ctx)
+	fmt.Fprintf(os.Stdout, "DEBUG(%s):\nDirectory digest: %s\n", label, digest_str)
 	return c
 }
 
@@ -587,11 +593,13 @@ func (h *Helm) createContainer(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
 ) *dagger.Container {
-	return dag.Container().
+	c := dag.Container().
 		From(HELM_IMAGE).
 		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
+	h.Directory = c.Directory("/helm")
+	return c
 }
 
 // getRepoURLs returns a list of the repository URLs from the values string.
