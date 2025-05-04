@@ -414,11 +414,13 @@ func (h *Helm) registryLogin(
 
 	c = h.debugEnv(c, ctx, "in registryLogin before repo add")
 
-	c, _ = c.
+	dir := c.
 		With(InvalidatedCache).
 		WithExec(cmd).
-		Sync(ctx)
+		Directory("/helm")
 
+	digest_str, _ := dir.Digest(ctx)
+	fmt.Fprintf(os.Stdout, "DEBUG(in registryLogin right after command):\nLOCAL Directory digest: %s\n", digest_str)
 
 	c = h.debugEnv(c, ctx, "in registryLogin after repo add")
 
