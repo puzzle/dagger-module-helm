@@ -414,17 +414,16 @@ func (h *Helm) registryLogin(
 
 	c = h.debugEnv(c, ctx, "in registryLogin before repo add")
 
-	dir := c.
+	c, err := c.
 		With(InvalidatedCache).
 		WithExec(cmd).
-		Directory("/helm")
+		With(h.retainDirectoryChanges).
+		Sync(ctx)
 
-	digest_str, _ := dir.Digest(ctx)
-	fmt.Fprintf(os.Stdout, "DEBUG(in registryLogin right after command):\nLOCAL Directory digest: %s\n", digest_str)
 
 	c = h.debugEnv(c, ctx, "in registryLogin after repo add")
 
-	return c, nil
+	return c, err
 }
 
 func (h *Helm) debugEnv(
@@ -432,12 +431,6 @@ func (h *Helm) debugEnv(
 	ctx context.Context,
 	label string,
 ) *dagger.Container {
-	//c, err := c.With(InvalidatedCache).WithExec([]string{"sh", "-c", `cat /helm/.config/helm/repositories.yaml`}).Sync(ctx)
-	//if err != nil {
-	//	return c
-	//}
-	
-	//ret_str, _ := c.Stdout(ctx)
 	digest_str, _ := h.Directory.Digest(ctx)
 	fmt.Fprintf(os.Stdout, "DEBUG(%s):\nDirectory digest: %s\n", label, digest_str)
 	return c
@@ -591,6 +584,16 @@ func (h *Helm) hasMissingDependencies(
 	return false, nil
 }
 
+// Must be called right after WithExec. Sets up the container to reuse directory changes.
+func (h *Helm) retainDirectoryChanges(
+	c *dagger.Container,
+) *dagger.Container {
+	dir := c.Directory("/helm")
+	return c.
+		WithoutDirectory("/helm").
+		WithDirectory("/helm", dir, dagger.ContainerWithDirectoryOpts{Owner: "1001"})
+}
+	
 func (h *Helm) createContainer(
 	// directory that contains the Helm Chart
 	directory *dagger.Directory,
