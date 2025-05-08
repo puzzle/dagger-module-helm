@@ -1,13 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
   "packageRules": [
-    {
-      "matchFiles": ["**/go.mod"], // Dagger module go.mod is managed by dagger
-      "enabled": false
-    },
     {
       "matchUpdateTypes": ["minor", "patch"],
       "matchCurrentVersion": "!/^0/",
