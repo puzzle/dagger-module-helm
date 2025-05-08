@@ -26,5 +26,5 @@ appVersion: "1.16.0"
 # This is an optional list containing all dependencies.
 dependencies:
   - name: dependency-track
-    version: 1.8.1
+    version: 1.8.8
     repository:  https://puzzle.github.io/dependencytrack-helm/
