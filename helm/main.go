@@ -155,8 +155,7 @@ func (h *Helm) PackagePush(
 
 	if useNonOciHelmRepo {
 		curlCmd := []string{
-			`curl -f`,
-			`--variable %REGISTRY_USERNAME`,
+			`curl --variable %REGISTRY_USERNAME`,
 			`--variable %REGISTRY_PASSWORD`,
 			`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
 			`-T`,
@@ -278,8 +277,7 @@ func (h *Helm) doesChartExistOnRepo(
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 	// Do a GET of the chart but with response headers only so we do not download the chart
 	curlCmd := []string{
-		`curl -f`,
-		`--variable %REGISTRY_USERNAME`,
+		`curl --variable %REGISTRY_USERNAME`,
 		`--variable %REGISTRY_PASSWORD`,
 		`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
 		opts.getChartFqdn(pkgFile),
