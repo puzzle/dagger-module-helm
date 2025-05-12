@@ -1,6 +1,10 @@
 name: Dagger test
 
 on:
+  # ensure that it runs on all opened PR's
+  pull_request:
+    types: [opened, reopened]
+  # run on every push
   push:
 
 env:
