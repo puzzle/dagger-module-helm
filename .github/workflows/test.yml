@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Dagger CLI
         run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
-      - name: Display Helm module functions
+      - name: Generate and compile Helm module
         run: dagger functions -m helm/
       - name: Run module tests
         run: dagger -m tests/ call all
@@ -32,7 +32,9 @@ jobs:
               --repository ${TEST_HELM_REGISTRY_REPOSITORY} \
               --username ${TEST_HELM_REGISTRY_HELM_USER} \
               --password env:TEST_HELM_REGISTRY_HELM_PASSWORD
-      - name: Display go examples module functions
+      - name: Generate and compile ci module
+        run: dagger -m ci/ functions
+      - name: Generate and compile go examples module
         run: dagger -m helm/examples/go/ functions
       - name: Test shell examples
         run: |
