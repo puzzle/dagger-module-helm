@@ -278,7 +278,7 @@ func (h *Helm) doesChartExistOnRepo(
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 	// Do a GET of the chart but with response headers only so we do not download the chart
 	curlCmd := []string{
-		`curl -f`,
+		`curl`, // Do not use `-f` here because the returned http code is needed.
 		`--variable %REGISTRY_USERNAME`,
 		`--variable %REGISTRY_PASSWORD`,
 		`--expand-user "{{REGISTRY_USERNAME}}:{{REGISTRY_PASSWORD}}"`,
