@@ -113,7 +113,7 @@ func (h *Helm) PackagePush(
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
 	c := dag.Container().
-		From("registry.puzzle.ch/cicd/alpine-base:latest").
+		From("harbor.puzzle.ch/pitc-cicd-public/alpine-base:latest").
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
