@@ -1,0 +1,32 @@
+name: Image Build
+
+on:
+  # configure manual trigger
+  workflow_dispatch:
+
+env:
+  # The Dagger CLI uses the DAGGER_CLOUD_TOKEN environment variable to authenticate with Dagger Cloud
+  DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dagger CLI
+        run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
+      - name: Generate and compile ci module
+        run: dagger functions -m ci/
+      - name: Build and publish module image
+        env:
+          HELM_IMAGE_REGISTRY_URL: ${{ secrets.HELM_IMAGE_REGISTRY_URL }}
+          HELM_IMAGE_REGISTRY_REPOSITORY: ${{ secrets.HELM_IMAGE_REGISTRY_REPOSITORY }}
+          HELM_IMAGE_REGISTRY_USER: ${{ secrets.HELM_IMAGE_REGISTRY_USER }}
+          HELM_IMAGE_REGISTRY_PASSWORD: ${{ secrets.HELM_IMAGE_REGISTRY_PASSWORD }}
+        run: |
+            dagger -m ci/ \
+              call publish \
+              --registry env:HELM_IMAGE_REGISTRY_URL \
+              --repository env:HELM_IMAGE_REGISTRY_REPOSITORY \
+              --username env:HELM_IMAGE_REGISTRY_USER \
+              --password env:HELM_IMAGE_REGISTRY_PASSWORD

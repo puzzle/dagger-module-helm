@@ -26,6 +26,13 @@ dagger functions -m ./helm/
 
 Basic development guide.
 
+### Module Image
+
+The Image used in the module is built by the [ci/](./ci/) Dagger module (publish function).
+
+The [image-build](.github/workflows/image-build.yml) workflow builds and publishes the image.
+This action can be triggered manually. It uses the GitHub secrets for the needed credentials.
+
 ### Setup/update Dagger module
 
 ```bash
