@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
+const HELM_IMAGE string = "harbor.puzzle.ch/pitc-cicd-public/helm-chainguard:latest"
 
 type Helm struct{}
 
@@ -113,7 +113,7 @@ func (h *Helm) PackagePush(
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
 	c := dag.Container().
-		From("harbor.puzzle.ch/pitc-cicd-public/alpine-base:latest").
+		From(HELM_IMAGE).
 		WithDirectory("/helm", directory).
 		WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
