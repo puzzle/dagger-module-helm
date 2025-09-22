@@ -27,8 +27,13 @@ RUN ls -al /usr/local/bin
 
 FROM cgr.dev/chainguard/helm:latest-dev AS prod
 
+USER root
+
 COPY --from=base /usr/local/bin/ /usr/local/bin/
 
 WORKDIR /helm
+
+RUN chown -R 65532:0 /helm && \
+    chmod -R g=u /helm
 
 USER 65532
