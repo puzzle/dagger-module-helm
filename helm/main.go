@@ -334,7 +334,7 @@ func (h *Helm) createContainer(
 ) *dagger.Container {
 	return dag.Container().
 		From(HELM_IMAGE).
-		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
+		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "65532"}).
 		WithWorkdir("/helm").
 		WithoutEntrypoint()
 }
