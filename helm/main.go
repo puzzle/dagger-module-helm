@@ -15,6 +15,7 @@ import (
 )
 
 const HELM_IMAGE string = "harbor.puzzle.ch/pitc-cicd-public/helm-chainguard:latest"
+const BASH_IMAGE string = "cgr.dev/chainguard/bash:latest"
 
 type Helm struct{}
 
@@ -112,18 +113,18 @@ func (h *Helm) PackagePush(
 	}
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
-	c := dag.Container().
+	cHelm := dag.Container().
 		From(HELM_IMAGE).
-		WithDirectory("/helm", directory).
+		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "65532"}).
 		WithWorkdir("/helm")
-	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
+	version, err := cHelm.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
 		return false, err
 	}
 
 	version = strings.TrimSpace(version)
 
-	name, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.name' -"}).Stdout(ctx)
+	name, err := cHelm.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.name' -"}).Stdout(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -131,7 +132,7 @@ func (h *Helm) PackagePush(
 	name = strings.TrimSpace(name)
 	pkgFile := fmt.Sprintf("%s-%s.tgz", name, version)
 
-	chartExists, err := h.doesChartExistOnRepo(ctx, c, &opts, name, version)
+	chartExists, err := h.doesChartExistOnRepo(ctx, cHelm, &opts, name, version)
 	if err != nil {
 		return false, err
 	}
@@ -140,7 +141,7 @@ func (h *Helm) PackagePush(
 		return false, nil
 	}
 
-	c, err = c.WithExec([]string{"helm", "dependency", "update", "."}).
+	cHelm, err = cHelm.WithExec([]string{"helm", "dependency", "update", "."}).
 		WithExec([]string{"helm", "package", "."}).
 		WithExec([]string{"sh", "-c", "ls"}).
 		Sync(ctx)
@@ -149,9 +150,7 @@ func (h *Helm) PackagePush(
 		return false, err
 	}
 
-	c = c.
-		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
-		WithSecretVariable("REGISTRY_PASSWORD", opts.Password)
+	helmDir := cHelm.Directory("/helm")
 
 	if useNonOciHelmRepo {
 		curlCmd := []string{
@@ -163,11 +162,17 @@ func (h *Helm) PackagePush(
 			opts.getRepoFqdn() + "/",
 		}
 
-		c, err = c.
+		_, err = dag.Container().
+			From(BASH_IMAGE).
+			WithUser("65532").
+			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
+			WithDirectory("/helm", helmDir, dagger.ContainerWithDirectoryOpts{Owner: "65532"}).
+			WithWorkdir("/helm").
 			WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
 			Sync(ctx)
 	} else {
-		c, err = c.
+		cHelm, err = cHelm.
 			WithEnvVariable("REGISTRY_URL", opts.Registry).
 			WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
@@ -256,12 +261,12 @@ func (h *Helm) doesChartExistOnRepo(
 		}
 
 		//TODO: Refactor with return
-		c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
+		c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /tmp/ec", opts.getChartFqdn(name), version)}).Sync(ctx)
 		if err != nil {
 			return false, err
 		}
 
-		exc, err := c.File("/ec").Contents(ctx)
+		exc, err := c.File("/tmp/ec").Contents(ctx)
 		if err != nil {
 			return false, err
 		}
@@ -285,7 +290,8 @@ func (h *Helm) doesChartExistOnRepo(
 		`--silent -Iw '%{http_code}'`,
 	}
 
-	httpCode, err := c.
+	httpCode, err := dag.Container().
+		From(BASH_IMAGE).
 		WithEnvVariable("REGISTRY_USERNAME", opts.Username).
 		WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 		WithExec([]string{"sh", "-c", strings.Join(curlCmd, " ")}).
