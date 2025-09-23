@@ -174,6 +174,8 @@ func (h *Helm) PackagePush(
 	} else {
 		cHelm, err = cHelm.
 			WithEnvVariable("REGISTRY_URL", opts.Registry).
+			WithEnvVariable("REGISTRY_USERNAME", opts.Username).
+			WithSecretVariable("REGISTRY_PASSWORD", opts.Password).
 			WithExec([]string{"sh", "-c", `echo ${REGISTRY_PASSWORD} | helm registry login ${REGISTRY_URL} --username ${REGISTRY_USERNAME} --password-stdin`}).
 			WithExec([]string{"helm", "push", pkgFile, opts.getRepoFqdn()}).
 			WithoutSecretVariable("REGISTRY_PASSWORD").
