@@ -1,21 +1,15 @@
-FROM registry.access.redhat.com/ubi9:9.5-1745854298
+FROM cgr.dev/chainguard/bash:latest AS base
 
-ARG HELM_PACKAGE=https://get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
-ARG HELM_UNITTEST_PACKAGE=https://github.com/helm-unittest/helm-unittest/releases/download/v0.7.0/helm-unittest-linux-amd64-0.7.0.tgz
-ARG YQ_PACKAGE=https://github.com/mikefarah/yq/releases/download/v4.44.6/yq_linux_amd64.tar.gz
+ARG HELM_UNITTEST_PACKAGE=https://github.com/helm-unittest/helm-unittest/releases/download/v1.0.1/helm-unittest-linux-amd64-1.0.1.tgz
+ARG YQ_PACKAGE=https://github.com/mikefarah/yq/releases/download/v4.47.2/yq_linux_amd64.tar.gz
 
 # Environment variables
 ENV \
     HOME="/helm" 
 
 RUN  \
-    # install Helm
-    curl ${HELM_PACKAGE} -L -o /tmp/helm.tar.gz && \
-    tar xvfz /tmp/helm.tar.gz -C /tmp && \
-    cp -a /tmp/linux-amd64/helm  /usr/local/bin/helm && \
-    rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 && \
     # Install Helm unittest plugin
-    mkdir -p /tmp/hut && \
+    mkdir -p /tmp/hut /usr/local/bin && \
     curl ${HELM_UNITTEST_PACKAGE} -L -o /tmp/helm-unittest.tgz && \
     tar xvfz /tmp/helm-unittest.tgz -C /tmp/hut && \
     cp /tmp/hut/untt /usr/local/bin/helm-unittest && \
@@ -29,12 +23,17 @@ RUN  \
     # make all binaries executable
     chmod +x /usr/local/bin/*
 
+RUN ls -al /usr/local/bin
+
+FROM cgr.dev/chainguard/helm:latest-dev AS prod
+
+USER root
+
+COPY --from=base /usr/local/bin/ /usr/local/bin/
+
 WORKDIR /helm
 
-RUN chown -R 1001:0 /helm && \
+RUN chown -R 65532:0 /helm && \
     chmod -R g=u /helm
 
-USER 1001
-
-ENTRYPOINT ["/usr/local/bin/helm"]
-CMD ["--help"]
+USER 65532
