@@ -26,7 +26,7 @@ jobs:
         run: |
             dagger -m ci/ \
               call publish \
-              --registry env:HELM_IMAGE_REGISTRY_URL \
-              --repository env:HELM_IMAGE_REGISTRY_REPOSITORY \
-              --username env:HELM_IMAGE_REGISTRY_USER \
-              --password env:HELM_IMAGE_REGISTRY_PASSWORD
+              --registry ${HELM_IMAGE_REGISTRY_URL} \
+              --repository ${HELM_IMAGE_REGISTRY_REPOSITORY} \
+              --username ${HELM_IMAGE_REGISTRY_USER} \
+              --password ${HELM_IMAGE_REGISTRY_PASSWORD}
