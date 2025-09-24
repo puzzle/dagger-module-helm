@@ -8,6 +8,7 @@ import (
 	"context"
 	"dagger/ci/internal/dagger"
 	"fmt"
+	"os"
 )
 
 type Ci struct{}
@@ -62,6 +63,8 @@ func (m *Ci) Publish(
 
 	reference := fmt.Sprintf("%s/%s:%s", registry, repository, imageTag)
 
+	fmt.Fprintf(os.Stdout, registry)
+	fmt.Fprintf(os.Stdout, reference)
 	// publish to registry
 	ref, err := container.
 		WithRegistryAuth(registry, username, password).
