@@ -1,6 +1,9 @@
 name: Image Build
 
 on:
+  push:
+    branches:
+      - main
   # configure manual trigger
   workflow_dispatch:
 
@@ -19,14 +22,14 @@ jobs:
         run: dagger functions -m ci/
       - name: Build and publish module image
         env:
-          HELM_IMAGE_REGISTRY_URL: ${{ secrets.HELM_IMAGE_REGISTRY_URL }}
-          HELM_IMAGE_REGISTRY_REPOSITORY: ${{ secrets.HELM_IMAGE_REGISTRY_REPOSITORY }}
-          HELM_IMAGE_REGISTRY_USER: ${{ secrets.HELM_IMAGE_REGISTRY_USER }}
-          HELM_IMAGE_REGISTRY_PASSWORD: ${{ secrets.HELM_IMAGE_REGISTRY_PASSWORD }}
+          HELM_IMAGE_REGISTRY_URL: ghcr.io
+          HELM_IMAGE_REGISTRY_REPOSITORY: ${{ github.repository }}/dagger-module-helm
+          HELM_IMAGE_REGISTRY_USER: ${{ github.actor }}
+          HELM_IMAGE_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
             dagger -m ci/ \
               call publish \
-              --registry env:HELM_IMAGE_REGISTRY_URL \
-              --repository env:HELM_IMAGE_REGISTRY_REPOSITORY \
-              --username env:HELM_IMAGE_REGISTRY_USER \
+              --registry ${HELM_IMAGE_REGISTRY_URL} \
+              --repository ${HELM_IMAGE_REGISTRY_REPOSITORY} \
+              --username ${HELM_IMAGE_REGISTRY_USER} \
               --password env:HELM_IMAGE_REGISTRY_PASSWORD
