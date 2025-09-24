@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const HELM_IMAGE string = "quay.io/puzzle/dagger-module-helm:latest"
+const HELM_IMAGE string = "ghcr.io/puzzle/dagger-module-helm/dagger-module-helm:latest"
 
 type Helm struct{}
 
@@ -113,8 +113,8 @@ func (h *Helm) PackagePush(
 
 	fmt.Fprintf(os.Stdout, "☸️ Helm package and Push")
 	c := dag.Container().
-		From("harbor.puzzle.ch/pitc-cicd-public/alpine-base:latest").
-		WithDirectory("/helm", directory).
+		From(HELM_IMAGE).
+		WithDirectory("/helm", directory, dagger.ContainerWithDirectoryOpts{Owner: "1001"}).
 		WithWorkdir("/helm")
 	version, err := c.WithExec([]string{"sh", "-c", "helm show chart . | yq eval '.version' -"}).Stdout(ctx)
 	if err != nil {
@@ -256,12 +256,12 @@ func (h *Helm) doesChartExistOnRepo(
 		}
 
 		//TODO: Refactor with return
-		c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /ec", opts.getChartFqdn(name), version)}).Sync(ctx)
+		c, err = c.WithExec([]string{"sh", "-c", fmt.Sprintf("helm show chart %s --version %s; echo -n $? > /tmp/ec", opts.getChartFqdn(name), version)}).Sync(ctx)
 		if err != nil {
 			return false, err
 		}
 
-		exc, err := c.File("/ec").Contents(ctx)
+		exc, err := c.File("/tmp/ec").Contents(ctx)
 		if err != nil {
 			return false, err
 		}
