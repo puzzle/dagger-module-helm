@@ -1,6 +1,9 @@
 name: Image Build
 
 on:
+  push:
+    branches:
+      - main
   # configure manual trigger
   workflow_dispatch:
 
