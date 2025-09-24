@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9:9.6-1758184894
+FROM registry.access.redhat.com/ubi10:10.0-1758699521
 
 ARG HELM_PACKAGE=https://get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
 ARG HELM_UNITTEST_PACKAGE=https://github.com/helm-unittest/helm-unittest/releases/download/v1.0.1/helm-unittest-linux-amd64-1.0.1.tgz
